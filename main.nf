@@ -11,6 +11,7 @@
  Rickard Hammarén @Hammarn  <rickard.hammaren@scilifelab.se>
 ---------------------------------------------------------------
 */
+nextflow.enable.dsl=2
 
 def helpMessage() {
     log.info """
@@ -363,285 +364,1103 @@ if( workflow.profile == 'standard'){
     }
 }
 
-/*
- * PREPROCESSING - Build STAR index
- */
-if(params.aligner == 'star' && !params.star_index && params.fasta){
-    process makeSTARindex {
-        tag "$fasta"
-        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
 
-        input:
-        file fasta from ch_fasta_for_star_index
-        file gtf from gtf_makeSTARindex
+///*
+// * PREPROCESSING - Build STAR index
+// */
+//if(params.aligner == 'star' && !params.star_index && params.fasta){
+//    process makeSTARindex {
+//        tag "$fasta"
+//        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file fasta from ch_fasta_for_star_index
+//        file gtf from gtf_makeSTARindex
+//
+//        output:
+//        file "star" into star_index
+//
+//        script:
+//        def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
+//        """
+//        mkdir star
+//        STAR \\
+//            --runMode genomeGenerate \\
+//            --runThreadN ${task.cpus} \\
+//            --sjdbGTFfile $gtf \\
+//            --genomeDir star/ \\
+//            --genomeFastaFiles $fasta \\
+//            $avail_mem
+//        """
+//    }
+//}
+//
+///*
+// * PREPROCESSING - Build HISAT2 splice sites file
+// */
+//if(params.aligner == 'hisat2' && !params.splicesites){
+//    process makeHisatSplicesites {
+//        tag "$gtf"
+//        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file gtf from gtf_makeHisatSplicesites
+//
+//        output:
+//        file "${gtf.baseName}.hisat2_splice_sites.txt" into indexing_splicesites, alignment_splicesites
+//
+//        script:
+//        """
+//        hisat2_extract_splice_sites.py $gtf > ${gtf.baseName}.hisat2_splice_sites.txt
+//        """
+//    }
+//}
+///*
+// * PREPROCESSING - Build HISAT2 index
+// */
+//if(params.aligner == 'hisat2' && !params.hisat2_index && params.fasta){
+//    process makeHISATindex {
+//        tag "$fasta"
+//        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file fasta from ch_fasta_for_hisat_index
+//        file indexing_splicesites from indexing_splicesites
+//        file gtf from gtf_makeHISATindex
+//
+//        output:
+//        file "${fasta.baseName}.*.ht2" into hs2_indices
+//
+//        script:
+//        if( !task.memory ){
+//            log.info "[HISAT2 index build] Available memory not known - defaulting to 0. Specify process memory requirements to change this."
+//            avail_mem = 0
+//        } else {
+//            log.info "[HISAT2 index build] Available memory: ${task.memory}"
+//            avail_mem = task.memory.toGiga()
+//        }
+//        if( avail_mem > params.hisatBuildMemory ){
+//            log.info "[HISAT2 index build] Over ${params.hisatBuildMemory} GB available, so using splice sites and exons in HISAT2 index"
+//            extract_exons = "hisat2_extract_exons.py $gtf > ${gtf.baseName}.hisat2_exons.txt"
+//            ss = "--ss $indexing_splicesites"
+//            exon = "--exon ${gtf.baseName}.hisat2_exons.txt"
+//        } else {
+//            log.info "[HISAT2 index build] Less than ${params.hisatBuildMemory} GB available, so NOT using splice sites and exons in HISAT2 index."
+//            log.info "[HISAT2 index build] Use --hisatBuildMemory [small number] to skip this check."
+//            extract_exons = ''
+//            ss = ''
+//            exon = ''
+//        }
+//        """
+//        $extract_exons
+//        hisat2-build -p ${task.cpus} $ss $exon $fasta ${fasta.baseName}.hisat2_index
+//        """
+//    }
+//}
+//
+///*
+// * PREPROCESSING - txrevise gff3 to fasta
+// */
+//if(params.run_txrevise){
+//    process gff_to_fasta {
+//        tag "${txrevise_gff.baseName}"
+//        publishDir path: { params.saveReference ? "${params.outdir}/Salmon/salmon_fasta" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file txrevise_gff from txrevise_gff_ch
+//        file genome_fasta from genome_fasta_ch.collect()
+//
+//        output:
+//        file "${txrevise_gff.baseName}.fa" into txrevise_fasta_ch
+//        
+//        script:
+//        """
+//        gffread -w ${txrevise_gff.baseName}.fa -g $genome_fasta $txrevise_gff
+//        """
+//    }
+//}
+//
+//if( params.run_salmon) { salmon_fasta_ch.mix(tx_fasta_ch).set { salmon_fasta_ch } }
+//if( params.run_txrevise) { salmon_fasta_ch.mix(txrevise_fasta_ch).set { salmon_fasta_ch }  }
+//
+///*
+// * PREPROCESSING - Build Salmon index
+// */
+//if(params.run_salmon || params.run_txrevise ){
+//    process makeSalmonIndex {
+//        tag "${fasta.baseName}"
+//        publishDir path: { params.saveReference ? "${params.outdir}/Salmon/salmon_index" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//        
+//        input:
+//        file fasta from salmon_fasta_ch
+//
+//        output:
+//        file "${fasta.baseName}.index" into salmon_index
+//        
+//        script:
+//        """
+//        salmon index -t ${fasta} -i ${fasta.baseName}.index
+//        """
+//    }
+//}
+//
+///*
+// * PREPROCESSING - Convert GFF3 to GTF
+// */
+//if(params.gff){
+//  process convertGFFtoGTF {
+//      tag "$gff"
+//
+//      input:
+//      file gff from gffFile
+//
+//      output:
+//      file "${gff.baseName}.gtf" into gtf_makeSTARindex, gtf_makeHisatSplicesites, gtf_makeHISATindex, gtf_makeBED12,
+//            gtf_star, gtf_dupradar, gtf_featureCounts, gtf_dexseq
+//
+//      script:
+//      """
+//      gffread  $gff -T -o ${gff.baseName}.gtf
+//      """
+//  }
+//}
+//
+///*
+// * PREPROCESSING - Build Exon GFF for dexseq
+// */
+//if (params.run_exon_quant){
+//    process makeDexSeqExonGFF {
+//        tag "${gtf.baseName}"
+//        publishDir path: { params.saveReference ? "${params.outdir}/dexseq_exon_counts" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file gtf from gtf_dexseq.collect()
+//
+//        output:
+//        file "${gtf.baseName}.patched_contigs.DEXSeq.gff" into dexseq_gff_count_exons
+//        
+//        script:
+//        """
+//        cat $gtf | sed 's/chrM/chrMT/;s/chr//' > ${gtf.baseName}.patched_contigs.gtf
+//        $baseDir/bin/dexseq/dexseq_prepare_annotation.py ${gtf.baseName}.patched_contigs.gtf ${gtf.baseName}.patched_contigs.DEXSeq.gff
+//        """
+//    }
+//}
+//
+///*
+// * PREPROCESSING - Build BED12 file
+// */
+//if(!params.bed12){
+//    process makeBED12 {
+//        tag "$gtf"
+//        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
+//                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
+//
+//        input:
+//        file gtf from gtf_makeBED12
+//
+//        output:
+//        file "${gtf.baseName}.bed" into bed_rseqc, bed_genebody_coverage
+//
+//        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
+//        """
+//        gtf2bed $gtf > ${gtf.baseName}.bed
+//        """
+//    }
+//}
+//
+//
+///*
+// * STEP 1 - FastQC
+// */
+//process fastqc {
+//    tag "$name"
+//    publishDir "${params.outdir}/fastqc", mode: 'copy',
+//        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+//
+//    when:
+//    !params.skip_qc && !params.skip_fastqc
+//
+//    input:
+//    set val(name), file(reads) from raw_reads_fastqc
+//
+//    output:
+//    file "*_fastqc.{zip,html}" into fastqc_results
+//
+//    script:
+//    """
+//    fastqc -q $reads
+//    """
+//}
+//
+//
+///*
+// * STEP 2 - Trim Galore!
+// */
+//process trim_galore {
+//    tag "$name"
+//    publishDir "${params.outdir}/trim_galore", mode: 'copy',
+//        saveAs: {filename ->
+//            if (filename.indexOf("_fastqc") > 0) "FastQC/$filename"
+//            else if (filename.indexOf("trimming_report.txt") > 0) "logs/$filename"
+//            else if (!params.saveTrimmed && filename == "where_are_my_files.txt") filename
+//            else if (params.saveTrimmed && filename != "where_are_my_files.txt") filename
+//            else null
+//        }
+//
+//    input:
+//    set val(name), file(reads) from raw_reads_trimgalore
+//    file wherearemyfiles from ch_where_trim_galore.collect()
+//
+//    output:
+//    set val(name), file("*fq.gz") into trimmed_reads, trimmed_reads_salmon
+//    file "*trimming_report.txt" into trimgalore_results
+//    file "*_fastqc.{zip,html}" into trimgalore_fastqc_reports
+//    file "where_are_my_files.txt"
+//
+//
+//    script:
+//    c_r1 = clip_r1 > 0 ? "--clip_r1 ${clip_r1}" : ''
+//    c_r2 = clip_r2 > 0 ? "--clip_r2 ${clip_r2}" : ''
+//    tpc_r1 = three_prime_clip_r1 > 0 ? "--three_prime_clip_r1 ${three_prime_clip_r1}" : ''
+//    tpc_r2 = three_prime_clip_r2 > 0 ? "--three_prime_clip_r2 ${three_prime_clip_r2}" : ''
+//    if (params.singleEnd) {
+//        """
+//        trim_galore --fastqc --gzip $c_r1 $tpc_r1 $reads
+//        """
+//    } else {
+//        """
+//        trim_galore --paired --fastqc --gzip $c_r1 $c_r2 $tpc_r1 $tpc_r2 $reads
+//        """
+//    }
+//}
+//
+//
+///*
+// * STEP 3 - align with STAR
+// */
+//// Function that checks the alignment rate of the STAR output
+//// and returns true if the alignment passed and otherwise false
+//skipped_poor_alignment = []
+//def check_log(logs) {
+//    def percent_aligned = 0;
+//    logs.eachLine { line ->
+//        if ((matcher = line =~ /Uniquely mapped reads %\s*\|\s*([\d\.]+)%/)) {
+//            percent_aligned = matcher[0][1]
+//        }
+//    }
+//    logname = logs.getBaseName() - 'Log.final'
+//    if(percent_aligned.toFloat() <= '5'.toFloat() ){
+//        log.info "#################### VERY POOR ALIGNMENT RATE! IGNORING FOR FURTHER DOWNSTREAM ANALYSIS! ($logname)    >> ${percent_aligned}% <<"
+//        skipped_poor_alignment << logname
+//        return false
+//    } else {
+//        log.info "          Passed alignment > star ($logname)   >> ${percent_aligned}% <<"
+//        return true
+//    }
+//}
+//
+//if(params.aligner == 'star' && !params.skip_alignment){
+//    hisat_stdout = Channel.from(false)
+//    process star {
+//        tag "$prefix"
+//        publishDir "${params.outdir}/STAR", mode: 'copy',
+//            saveAs: {filename ->
+//                if (filename.indexOf(".bam") == -1) "logs/$filename"
+//                else if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
+//                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") filename
+//                else null
+//            }
+//
+//        input:
+//        // TODO (Nurlan Kerimov):  change the prefix to samplename in the future (did not do it because there is no test environment for changes)
+//        set samplename, file(reads) from trimmed_reads
+//        file index from star_index.collect()
+//        file gtf from gtf_star.collect()
+//        file wherearemyfiles from ch_where_star.collect()
+//
+//        output:
+//        // Add leafcutter and MBV bam channels to STAR alignment (here) too
+//        set file("*Log.final.out"), file ('*.bam') into star_aligned
+//        file "*.out" into alignment_logs
+//        file "*SJ.out.tab"
+//        file "*Log.out" into star_log
+//        file "where_are_my_files.txt"
+//        file "${prefix}Aligned.sortedByCoord.out.bam.bai" into bam_index_rseqc, bam_index_genebody
+//
+//        script:
+//        prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
+//        def star_mem = task.memory ?: params.star_memory ?: false
+//        def avail_mem = star_mem ? "--limitBAMsortRAM ${star_mem.toBytes() - 100000000}" : ''
+//        seqCenter = params.seqCenter ? "--outSAMattrRGline ID:$prefix 'CN:$params.seqCenter'" : ''
+//        """
+//        STAR --genomeDir $index \\
+//            --sjdbGTFfile $gtf \\
+//            --readFilesIn $reads  \\
+//            --runThreadN ${task.cpus} \\
+//            --twopassMode Basic \\
+//            --outWigType bedGraph \\
+//            --outSAMtype BAM SortedByCoordinate $avail_mem \\
+//            --readFilesCommand zcat \\
+//            --runDirPerm All_RWX \\
+//             --outFileNamePrefix $prefix $seqCenter
+//            
+//        samtools index ${prefix}Aligned.sortedByCoord.out.bam
+//        """
+//    }
+//    // Filter removes all 'aligned' channels that fail the check
+//    star_aligned
+//        .filter { logs, bams -> check_log(logs) }
+//        .flatMap {  logs, bams -> bams }
+//    .into { bam_count; bam_rseqc; bam_preseq; bam_markduplicates; bam_featurecounts; bam_for_genebody; bam_count_exons }
+//}
+//
+//
+///*
+// * STEP 3 - align with HISAT2
+// */
+//if(params.aligner == 'hisat2' && !params.skip_alignment){
+//    star_log = Channel.from(false)
+//    process hisat2Align {
+//        tag "$samplename"
+//        publishDir "${params.outdir}/HISAT2", mode: 'copy',
+//            saveAs: {filename ->
+//                if (filename.indexOf(".hisat2_summary.txt") > 0) "logs/$filename"
+//                else if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
+//                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") filename
+//                else null
+//            }
+//
+//        input:
+//        set samplename, file(reads) from trimmed_reads
+//        file hs2_indices from hs2_indices.collect()
+//        file alignment_splicesites from alignment_splicesites.collect()
+//        file wherearemyfiles from ch_where_hisat2.collect()
+//
+//        output:
+//        file "${samplename}.bam" into hisat2_bam
+//        file "${samplename}.hisat2_summary.txt" into alignment_logs
+//        file "where_are_my_files.txt"
+//
+//        script:
+//        index_base = hs2_indices[0].toString() - ~/.\d.ht2/
+//        //prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
+//        seqCenter = params.seqCenter ? "--rg-id ${samplename} --rg CN:${params.seqCenter.replaceAll('\\s','_')}" : ''
+//        def rnastrandness = ''
+//        if (forward_stranded && !unstranded){
+//            rnastrandness = params.singleEnd ? '--rna-strandness F' : '--rna-strandness FR'
+//        } else if (reverse_stranded && !unstranded){
+//            rnastrandness = params.singleEnd ? '--rna-strandness R' : '--rna-strandness RF'
+//        }
+//        if (params.singleEnd) {
+//            """
+//            hisat2 -x $index_base \\
+//                   -U $reads \\
+//                   $rnastrandness \\
+//                   --known-splicesite-infile $alignment_splicesites \\
+//                   -p ${task.cpus} \\
+//                   --met-stderr \\
+//                   --new-summary \\
+//                   --summary-file ${samplename}.hisat2_summary.txt $seqCenter \\
+//                   | samtools view -bS -F 4 -F 256 - > ${samplename}.bam
+//            """
+//        } else {
+//            """
+//            hisat2 -x $index_base \\
+//                   -1 ${reads[0]} \\
+//                   -2 ${reads[1]} \\
+//                   $rnastrandness \\
+//                   --known-splicesite-infile $alignment_splicesites \\
+//                   --no-mixed \\
+//                   --no-discordant \\
+//                   -p ${task.cpus} \\
+//                   --met-stderr \\
+//                   --new-summary \\
+//                   --summary-file ${samplename}.hisat2_summary.txt $seqCenter \\
+//                   | samtools view -bS -F 4 -F 8 -F 256 - > ${samplename}.bam
+//            """
+//        }
+//    }
+//
+//    process hisat2_sortOutput {
+//        tag "${hisat2_bam.baseName}"
+//        publishDir "${params.outdir}/HISAT2", mode: 'copy',
+//            saveAs: { filename ->
+//                if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
+//                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") "aligned_sorted/$filename"
+//                else null
+//            }
+//
+//        input:
+//        file hisat2_bam
+//        file wherearemyfiles from ch_where_hisat2_sort.collect()
+//
+//        output:
+//        file "${hisat2_bam.baseName}.sorted.bam" into bam_count, bam_rseqc, bam_preseq, bam_markduplicates, bam_featurecounts, bam_for_genebody, leafcutter_bam, mbv_bam
+//        file "${hisat2_bam.baseName}.sorted.bam.bai" into bam_index_rseqc, bam_index_genebody
+//        file "where_are_my_files.txt"
+//
+//        script:
+//        def avail_mem = task.memory ? "-m ${task.memory.toBytes() / task.cpus}" : ''
+//        """
+//        samtools sort \\
+//            $hisat2_bam \\
+//            -@ ${task.cpus} $avail_mem \\
+//            -o ${hisat2_bam.baseName}.sorted.bam
+//        samtools index ${hisat2_bam.baseName}.sorted.bam
+//        """
+//    }
+//}
+//
+//if(!params.skip_alignment){
+//    process sort_by_name_BAM {
+//        tag "${bam_featurecounts.baseName - '.sorted'}"
+//
+//        input:
+//        file bam_featurecounts
+//
+//        output:
+//        file "${bam_featurecounts.baseName}ByName.bam" into bam_featurecounts_sorted, bam_count_exons
+//
+//        script:
+//        def avail_mem = task.memory ? "-m ${task.memory.toBytes() / (task.cpus + 2)}" : ''
+//        """
+//        samtools sort -n \\
+//            $bam_featurecounts \\
+//            -@ ${task.cpus} $avail_mem \\
+//            -o ${bam_featurecounts.baseName}ByName.bam
+//        """
+//    }
+//}
+//
+//
+///*
+// * STEP 3Salmon.1 - quant transcripts with Salmon
+// */
+//if(params.run_salmon || params.run_txrevise ){
+//    process salmon_quant {
+//        tag "$samplename - ${index.baseName}"
+//        publishDir "${params.outdir}/Salmon/quant/${index.baseName}/", mode: 'copy',
+//            saveAs: {filename -> if (params.saveIndividualQuants && filename.indexOf(".quant.sf") > 0) filename else null }
+//
+//        input:
+//        set samplename, file(reads) from trimmed_reads_salmon
+//        each index from salmon_index
+//
+//        output:
+//        set val(index.baseName), file("${samplename}.quant.edited.sf") into salmon_merge_tx_ch
+//        file '*.quant.sf'
+//        
+//        script:
+//        def strandedness = params.unstranded ? 'U' : 'SR'
+//        if (params.singleEnd) {
+//            """
+//            salmon quant --seqBias --useVBOpt --gcBias \\
+//                         --libType $strandedness \\
+//                         --index ${index} \\
+//                         -r ${reads[0]} \\
+//                         -p ${task.cpus} \\
+//                         -o .
+//            mv quant.sf ${samplename}.quant.sf
+//            cat ${samplename}.quant.sf | csvtk cut -t -f "-Length,-EffectiveLength" | sed '1s/TPM/${samplename}_TPM/g' | sed '1s/NumReads/${samplename}_NumReads/g' > ${samplename}.quant.edited.sf
+//            """
+//        } else {
+//            """
+//            salmon quant --seqBias --useVBOpt --gcBias \\
+//                         --libType I$strandedness \\
+//                         --index $index \\
+//                         -1 ${reads[0]} \\
+//                         -2 ${reads[1]} \\
+//                         -p ${task.cpus} \\
+//                         -o .
+//            mv quant.sf ${samplename}.quant.sf
+//            cat ${samplename}.quant.sf | csvtk cut -t -f "-Length,-EffectiveLength" | sed '1s/TPM/${samplename}_TPM/g' | sed '1s/NumReads/${samplename}_NumReads/g' > ${samplename}.quant.edited.sf
+//            """
+//        }
+//    }
+//}
+//
+///*
+// * STEP 3Salmon.2 - merge salmon outputs
+// */
+//if(params.run_salmon || params.run_txrevise ){
+//    process salmon_merge {
+//        tag "merge_salmon_${index}"
+//        publishDir "${params.outdir}/Salmon/merged_counts/", mode: 'copy',
+//            saveAs: {filename -> if (filename.indexOf("TPM.merged.txt") > 0) "TPM/$filename"
+//            else if (filename.indexOf(".NumReads.merged.txt") > 0) "NumReads/$filename"
+//            else null }
+//
+//        input:
+//        set index, file(input_files) from salmon_merge_tx_ch.groupTuple()
+//
+//        output:
+//        file '*merged.txt'
+//
+//        script:
+//        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
+//        def single = input_files instanceof Path ? 1 : input_files.size()
+//        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Name"'
+//        """
+//        $merge $input_files | csvtk rename -t -f Name -n phenotype_id > merged_TPMS_NumReads.tsv
+//        csvtk cut -t -F -f -"*_NumReads" merged_TPMS_NumReads.tsv | sed 's/_TPM//g' > ${index}.TPM.merged.txt
+//        csvtk cut -t -F -f -"*_TPM" merged_TPMS_NumReads.tsv | sed 's/_NumReads//g' > ${index}.NumReads.merged.txt
+//        """
+//    }
+//}
+//
+///*
+// * Leafcutter quantification preparation step
+// */
+//if(params.run_leafcutter && !params.skip_alignment){
+//    process leafcutter_bam_to_junc {
+//        tag "${leafcutter_bam.baseName}"
+//        
+//        input:
+//        file leafcutter_bam
+//
+//        output:
+//        file '*.junc' into leafcutter_junc
+//        
+//        script:
+//        """
+//        samtools view $leafcutter_bam | python $baseDir/bin/leafcutter/filter_cs.py | $baseDir/bin/leafcutter/sam2bed.pl --use-RNA-strand - ${leafcutter_bam.baseName}.bed
+//        $baseDir/bin/leafcutter/bed2junc.pl ${leafcutter_bam.baseName}.bed ${leafcutter_bam.baseName}.junc
+//        """
+//    }
+//}
+//
+///*
+// * Leafcutter quantification step
+// */
+//if(params.run_leafcutter && !params.skip_alignment){
+//    process leafcutter_cluster_junctions {
+//        tag "${junc_files.baseName}"
+//        publishDir "${params.outdir}/leafcutter", mode: 'copy'
+//
+//        input:
+//        file junc_files from leafcutter_junc.map { it.toString() }.collectFile(name: 'junction_files.txt', newLine: true)
+//
+//        output:
+//        file 'leafcutter_perind*.formatted.gz'
+//        file 'junction_files.tar.gz'
+//        
+//        script:
+//        """
+//        tar -czf junction_files.tar.gz -T $junc_files
+//        python $baseDir/bin/leafcutter/leafcutter_cluster.py -j $junc_files -r . -m ${params.leafcutter_min_split_reads} -l ${params.leafcutter_max_intron_length}
+//        zcat leafcutter_perind.counts.gz | csvtk space2tab | csvtk rename -t -f chrom -n phenotype_id | sed 's/.sorted//g' | gzip -c > leafcutter_perind.counts.formatted.gz 
+//        zcat leafcutter_perind_numers.counts.gz | sed '1s/^/phenotype_id /' | sed 's/.sorted//g' | csvtk space2tab | gzip -c > leafcutter_perind_numers.counts.formatted.gz
+//        """        
+//    }
+//}
+//
+///*
+// * Quantify exon expression - featureCounts (exon level)
+// */
+//if (params.run_exon_quant && !params.skip_alignment){
+//    process count_exons {
+//        tag "${bam.simpleName}"
+//        
+//        publishDir "${params.outdir}/dexseq_exon_counts/quant_files", mode: 'copy',
+//            saveAs: {filename -> if (params.saveIndividualQuants && filename.indexOf(".exoncount.txt") > 0) filename else null }
+//
+//
+//        input:
+//        file bam from bam_count_exons
+//        file gff from dexseq_gff_count_exons.collect()
+//
+//        output:
+//        file "${bam.simpleName}.exoncount.txt" into merge_exon_count_ch
+//
+//        script:
+//        def featureCounts_direction = 0
+//        if (forward_stranded && !unstranded) {
+//            featureCounts_direction = 1
+//        } else if (reverse_stranded && !unstranded){
+//            featureCounts_direction = 2
+//        }
+//        """
+//        featureCounts -p -t exonic_part -s $featureCounts_direction -f -O -a $gff -o ${bam.simpleName}.exoncount.txt $bam
+//        """
+//    }
+//}
+//
+///*
+// * Merge exon counts files
+// */
+//if(params.run_exon_quant && !params.skip_alignment){
+//    process exon_count_merge {
+//        tag "merge exon ${input_files.size()} files"
+//        publishDir "${params.outdir}/dexseq_exon_counts", mode: 'copy'
+//
+//        input:
+//        file input_files from merge_exon_count_ch.toSortedList()
+//
+//        output:
+//        file 'merged_exon_counts.tsv'
+//
+//        script:
+//        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
+//        def single = input_files instanceof Path ? 1 : input_files.size()
+//        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Geneid,Start,Length,End,Chr,Strand"'
+//        """
+//        $merge $input_files | sed 's/.sortedByName.bam//g' | awk '\$1=\$1"_"\$2"_"\$3"_"\$4' OFS='\t' | csvtk rename -t -f Geneid_Chr_Start_End -n phenotype_id | csvtk cut -t -f "-Chr,-Start,-End,-Strand,-Length" > merged_exon_counts.tsv
+//        """
+//    }
+//}
+//
+///*
+// * Run QTLtools MBV
+// */
+//if(params.run_mbv && !params.skip_alignment){
+//    process run_mbv {
+//        tag "${mbv_bam.simpleName}"
+//        publishDir "${params.outdir}/MBV", mode: 'copy'
+//
+//        input:
+//        file mbv_bam
+//        file vcf from mbv_vcf_ch.collect()
+//
+//        output:
+//        file "${mbv_bam.simpleName}.mbv_output.txt"
+//
+//        script:
+//        """
+//        samtools index $mbv_bam
+//		QTLtools mbv --vcf $vcf --bam $mbv_bam --out ${mbv_bam.simpleName}.mbv_output.txt
+//        """
+//    }
+//}
+//
+///*
+// * Parse software version numbers
+// */
+//process get_software_versions {
+//
+//    output:
+//    file 'software_versions_mqc.yaml' into software_versions_yaml
+//
+//    script:
+//    """
+//    echo $workflow.manifest.version &> v_ngi_rnaseq.txt
+//    echo $workflow.nextflow.version &> v_nextflow.txt
+//    fastqc --version &> v_fastqc.txt
+//    cutadapt --version &> v_cutadapt.txt
+//    trim_galore --version &> v_trim_galore.txt
+//    STAR --version &> v_star.txt
+//    hisat2 --version &> v_hisat2.txt
+//    stringtie --version &> v_stringtie.txt
+//    preseq &> v_preseq.txt
+//    read_duplication.py --version &> v_rseqc.txt
+//    echo \$(bamCoverage --version 2>&1) > v_deeptools.txt
+//    featureCounts -v &> v_featurecounts.txt
+//    picard MarkDuplicates --version &> v_markduplicates.txt  || true
+//    samtools --version &> v_samtools.txt
+//    multiqc --version &> v_multiqc.txt
+//    scrape_software_versions.py &> software_versions_mqc.yaml
+//    """
+//}
+//
+//if(!params.skip_alignment){
+//    /*
+//     * STEP 4 - RSeQC analysis
+//     */
+//    process rseqc {
+//        tag "${bam_rseqc.baseName - '.sorted'}"
+//        publishDir "${params.outdir}/rseqc" , mode: 'copy',
+//            saveAs: {filename ->
+//                     if (filename.indexOf("bam_stat.txt") > 0)                      "bam_stat/$filename"
+//                else if (filename.indexOf("infer_experiment.txt") > 0)              "infer_experiment/$filename"
+//                else if (filename.indexOf("read_distribution.txt") > 0)             "read_distribution/$filename"
+//                else if (filename.indexOf("read_duplication.DupRate_plot.pdf") > 0) "read_duplication/$filename"
+//                else if (filename.indexOf("read_duplication.DupRate_plot.r") > 0)   "read_duplication/rscripts/$filename"
+//                else if (filename.indexOf("read_duplication.pos.DupRate.xls") > 0)  "read_duplication/dup_pos/$filename"
+//                else if (filename.indexOf("read_duplication.seq.DupRate.xls") > 0)  "read_duplication/dup_seq/$filename"
+//                else if (filename.indexOf("RPKM_saturation.eRPKM.xls") > 0)         "RPKM_saturation/rpkm/$filename"
+//                else if (filename.indexOf("RPKM_saturation.rawCount.xls") > 0)      "RPKM_saturation/counts/$filename"
+//                else if (filename.indexOf("RPKM_saturation.saturation.pdf") > 0)    "RPKM_saturation/$filename"
+//                else if (filename.indexOf("RPKM_saturation.saturation.r") > 0)      "RPKM_saturation/rscripts/$filename"
+//                else if (filename.indexOf("inner_distance.txt") > 0)                "inner_distance/$filename"
+//                else if (filename.indexOf("inner_distance_freq.txt") > 0)           "inner_distance/data/$filename"
+//                else if (filename.indexOf("inner_distance_plot.r") > 0)             "inner_distance/rscripts/$filename"
+//                else if (filename.indexOf("inner_distance_plot.pdf") > 0)           "inner_distance/plots/$filename"
+//                else if (filename.indexOf("junction_plot.r") > 0)                   "junction_annotation/rscripts/$filename"
+//                else if (filename.indexOf("junction.xls") > 0)                      "junction_annotation/data/$filename"
+//                else if (filename.indexOf("splice_events.pdf") > 0)                 "junction_annotation/events/$filename"
+//                else if (filename.indexOf("splice_junction.pdf") > 0)               "junction_annotation/junctions/$filename"
+//                else if (filename.indexOf("junctionSaturation_plot.pdf") > 0)       "junction_saturation/$filename"
+//                else if (filename.indexOf("junctionSaturation_plot.r") > 0)         "junction_saturation/rscripts/$filename"
+//                else filename
+//            }
+//
+//        when:
+//        !params.skip_qc && !params.skip_rseqc
+//
+//        input:
+//        file bam_rseqc
+//        file index from bam_index_rseqc
+//        file bed12 from bed_rseqc.collect()
+//
+//        output:
+//        file "*.{txt,pdf,r,xls}" into rseqc_results
+//
+//        script:
+//        """
+//        infer_experiment.py -i $bam_rseqc -r $bed12 > ${bam_rseqc.baseName}.infer_experiment.txt
+//        junction_annotation.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12
+//        bam_stat.py -i $bam_rseqc 2> ${bam_rseqc.baseName}.bam_stat.txt
+//        junction_saturation.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12 2> ${bam_rseqc.baseName}.junction_annotation_log.txt
+//        inner_distance.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12
+//        read_distribution.py -i $bam_rseqc -r $bed12 > ${bam_rseqc.baseName}.read_distribution.txt
+//        read_duplication.py -i $bam_rseqc -o ${bam_rseqc.baseName}.read_duplication
+//        """
+//    }
+//
+//
+//    /*
+//     * Step 4.1 Rseqc create BigWig coverage
+//     */
+//
+//    process createBigWig {
+//        tag "${bam.baseName - 'sortedByCoord.out'}"
+//        publishDir "${params.outdir}/bigwig", mode: 'copy'
+//
+//        when:
+//        !params.skip_qc && !params.skip_genebody_coverage
+//
+//        input:
+//        file bam from bam_for_genebody
+//        file index from bam_index_genebody
+//
+//        output:
+//        file "*.bigwig" into bigwig_for_genebody
+//
+//        script:
+//        """
+//        bamCoverage -b $bam -p ${task.cpus} -o ${bam.baseName}.bigwig
+//        """
+//    }
+//    /*
+//     * Step 4.2 Rseqc genebody_coverage
+//     */
+//    process genebody_coverage {
+//        tag "${bigwig.baseName}"
+//           publishDir "${params.outdir}/rseqc" , mode: 'copy',
+//            saveAs: {filename ->
+//                if (filename.indexOf("geneBodyCoverage.curves.pdf") > 0)       "geneBodyCoverage/$filename"
+//                else if (filename.indexOf("geneBodyCoverage.r") > 0)           "geneBodyCoverage/rscripts/$filename"
+//                else if (filename.indexOf("geneBodyCoverage.txt") > 0)         "geneBodyCoverage/data/$filename"
+//                else if (filename.indexOf("log.txt") > -1) false
+//                else filename
+//            }
+//
+//        when:
+//        !params.skip_qc && !params.skip_genebody_coverage
+//
+//        input:
+//        file bigwig from bigwig_for_genebody
+//        file bed12 from bed_genebody_coverage.collect()
+//
+//        output:
+//        file "*.{txt,pdf,r}" into genebody_coverage_results
+//
+//        script:
+//        """
+//        geneBody_coverage2.py \\
+//            -i $bigwig \\
+//            -o ${bigwig.baseName}.rseqc.txt \\
+//            -r $bed12
+//        """
+//    }
+//
+//    /*
+//     * STEP 5 - preseq analysis
+//     */
+//    process preseq {
+//        tag "${bam_preseq.baseName - '.sorted'}"
+//        publishDir "${params.outdir}/preseq", mode: 'copy'
+//
+//        when:
+//        !params.skip_qc && !params.skip_preseq
+//
+//        input:
+//        file bam_preseq
+//
+//        output:
+//        file "${bam_preseq.baseName}.ccurve.txt" into preseq_results
+//
+//        script:
+//        """
+//        preseq lc_extrap -v -B $bam_preseq -o ${bam_preseq.baseName}.ccurve.txt
+//        """
+//    }
+//
+//
+//    /*
+//     * STEP 6 Mark duplicates
+//     */
+//    process markDuplicates {
+//        tag "${bam.baseName - '.sorted'}"
+//        publishDir "${params.outdir}/markDuplicates", mode: 'copy',
+//            saveAs: {filename -> filename.indexOf("_metrics.txt") > 0 ? "metrics/$filename" : "$filename"}
+//
+//        when:
+//        !params.skip_qc && !params.skip_dupradar
+//
+//        input:
+//        file bam from bam_markduplicates
+//
+//        output:
+//        file "${bam.baseName}.markDups.bam" into bam_md
+//        file "${bam.baseName}.markDups_metrics.txt" into picard_results
+//        file "${bam.baseName}.markDups.bam.bai"
+//
+//        script:
+//        if( !task.memory ){
+//            log.info "[Picard MarkDuplicates] Available memory not known - defaulting to 3GB. Specify process memory requirements to change this."
+//            avail_mem = 3
+//        } else {
+//            avail_mem = task.memory.toGiga()
+//        }
+//        """
+//        picard -Xmx${avail_mem}g MarkDuplicates \\
+//            INPUT=$bam \\
+//            OUTPUT=${bam.baseName}.markDups.bam \\
+//            METRICS_FILE=${bam.baseName}.markDups_metrics.txt \\
+//            REMOVE_DUPLICATES=false \\
+//            ASSUME_SORTED=true \\
+//            PROGRAM_RECORD_ID='null' \\
+//            VALIDATION_STRINGENCY=LENIENT
+//        samtools index ${bam.baseName}.markDups.bam
+//        """
+//    }
+//
+//
+//    /*
+//     * STEP 7 - dupRadar
+//     */
+//    process dupradar {
+//
+//        tag "${bam_md.baseName - '.sorted.markDups'}"
+//        publishDir "${params.outdir}/dupradar", mode: 'copy',
+//            saveAs: {filename ->
+//                if (filename.indexOf("_duprateExpDens.pdf") > 0) "scatter_plots/$filename"
+//                else if (filename.indexOf("_duprateExpBoxplot.pdf") > 0) "box_plots/$filename"
+//                else if (filename.indexOf("_expressionHist.pdf") > 0) "histograms/$filename"
+//                else if (filename.indexOf("_dupMatrix.txt") > 0) "gene_data/$filename"
+//                else if (filename.indexOf("_duprateExpDensCurve.txt") > 0) "scatter_curve_data/$filename"
+//                else if (filename.indexOf("_intercept_slope.txt") > 0) "intercepts_slopes/$filename"
+//                else "$filename"
+//            }
+//
+//        when:
+//        !params.skip_qc && !params.skip_dupradar
+//
+//        input:
+//        file bam_md
+//        file gtf from gtf_dupradar.collect()
+//
+//        output:
+//        file "*.{pdf,txt}" into dupradar_results
+//
+//        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
+//        def dupradar_direction = 0
+//        if (forward_stranded && !unstranded) {
+//            dupradar_direction = 1
+//        } else if (reverse_stranded && !unstranded){
+//            dupradar_direction = 2
+//        }
+//        def paired = params.singleEnd ? 'single' :  'paired'
+//        """
+//        dupRadar.r $bam_md $gtf $dupradar_direction $paired ${task.cpus}
+//        """
+//    }
+//
+//    /*
+//     * STEP 8 Feature counts
+//     */
+//    process featureCounts {
+//        tag "${bam_featurecounts_sorted.baseName - '.sortedByName'}"
+//        publishDir "${params.outdir}/featureCounts", mode: 'copy',
+//            saveAs: {filename ->
+//                if (params.saveIndividualQuants && filename.indexOf("biotype_counts") > 0) "biotype_counts/$filename"
+//                else if (params.saveIndividualQuants && filename.indexOf("_gene.featureCounts.txt.summary") > 0) "gene_count_summaries/$filename"
+//                else if (params.saveIndividualQuants && filename.indexOf("_gene.featureCounts.txt") > 0) "gene_counts/$filename"
+//                else null
+//            }
+//
+//        input:
+//        file bam_featurecounts_sorted
+//        file gtf from gtf_featureCounts.collect()
+//        file biotypes_header from ch_biotypes_header.collect()
+//
+//        output:
+//        file "${sample_name}_gene.featureCounts.txt" into geneCounts, featureCounts_to_merge
+//        file "${sample_name}_gene.featureCounts.txt.summary" into featureCounts_logs
+//        file "${sample_name}_biotype_counts*mqc.{txt,tsv}" into featureCounts_biotype
+//
+//        script:
+//        def featureCounts_direction = 0
+//        def extraAttributes = params.fcExtraAttributes ? "--extraAttributes ${params.fcExtraAttributes}" : ''
+//        if (forward_stranded && !unstranded) {
+//            featureCounts_direction = 1
+//        } else if (reverse_stranded && !unstranded){
+//            featureCounts_direction = 2
+//        }
+//        // Try to get real sample name
+//        sample_name = bam_featurecounts_sorted.baseName - 'ByName'
+//        """
+//        mv $bam_featurecounts_sorted ${sample_name}.bam
+//        featureCounts -a $gtf -g gene_id --donotsort -o ${sample_name}_gene.featureCounts.txt $extraAttributes -p -s $featureCounts_direction ${sample_name}.bam
+//        featureCounts -a $gtf -g gene_type --donotsort -o ${sample_name}_biotype.featureCounts.txt -p -s $featureCounts_direction ${sample_name}.bam
+//        cut -f 1,7 ${sample_name}_biotype.featureCounts.txt | tail -n +3 | cat $biotypes_header - >> ${sample_name}_biotype_counts_mqc.txt
+//        mqc_features_stat.py ${sample_name}_biotype_counts_mqc.txt -s $sample_name -f rRNA -o ${sample_name}_biotype_counts_gs_mqc.tsv
+//        """
+//    }
+//
+//    /*
+//     * STEP 9 - Merge featurecounts
+//     */
+//    process merge_featureCounts {
+//        tag "merge ${input_files.size()} files"
+//        publishDir "${params.outdir}/featureCounts", mode: 'copy'
+//
+//        input:
+//        file input_files from featureCounts_to_merge.toSortedList()
+//
+//        output:
+//        file 'merged_gene_counts.txt'
+//
+//        script:
+//        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
+//        def single = input_files instanceof Path ? 1 : input_files.size()
+//        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Geneid,Start,Length,End,Chr,Strand,gene_name"'
+//        """
+//        $merge $input_files | csvtk cut -t -f "-Start,-Chr,-End,-Length,-Strand" | sed 's/Aligned.sortedByCoord.out.markDups.bam//g' | sed 's/.sorted.bam//g' | csvtk rename -t -f Geneid -n phenotype_id | csvtk cut -t -f "-gene_name" > merged_gene_counts.txt
+//        """
+//    }
+//
+//    /*
+//     * STEP 11 - edgeR MDS and heatmap
+//     */
+//    process sample_correlation {
+//        tag "${input_files[0].toString() - '.sorted_gene.featureCounts.txt' - 'Aligned'}"
+//        publishDir "${params.outdir}/sample_correlation", mode: 'copy'
+//
+//        when:
+//        !params.skip_qc && !params.skip_edger
+//
+//        input:
+//        file input_files from geneCounts.collect()
+//        val num_bams from bam_count.count()
+//        file mdsplot_header from ch_mdsplot_header
+//        file heatmap_header from ch_heatmap_header
+//
+//        output:
+//        file "*.{txt,pdf,csv}" into sample_correlation_results
+//
+//        when:
+//        num_bams > 2 && (!params.sampleLevel)
+//
+//        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
+//        """
+//        edgeR_heatmap_MDS.r $input_files
+//        cat $mdsplot_header edgeR_MDS_Aplot_coordinates_mqc.csv >> tmp_file
+//        mv tmp_file edgeR_MDS_Aplot_coordinates_mqc.csv
+//        cat $heatmap_header log2CPM_sample_distances_mqc.csv >> tmp_file
+//        mv tmp_file log2CPM_sample_distances_mqc.csv
+//        """
+//    }
+//
+//    /*
+//     * Pipeline parameters to go into MultiQC report
+//     */
+//    process workflow_summary_mqc {
+//    
+//        when:
+//        !params.skip_multiqc
+//    
+//        output:
+//        file 'workflow_summary_mqc.yaml' into workflow_summary_yaml
+//    
+//        exec:
+//        def yaml_file = task.workDir.resolve('workflow_summary_mqc.yaml')
+//        yaml_file.text  = """
+//        id: 'nfcore-rnaseq-summary'
+//        description: " - this information is collected when the pipeline is started."
+//        section_name: 'nfcore/rnaseq Workflow Summary'
+//        section_href: 'https://github.com/nf-core/rnaseq'
+//        plot_type: 'html'
+//        data: |
+//            <dl class=\"dl-horizontal\">
+//    ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }.join("\n")}
+//            </dl>
+//        """.stripIndent()
+//    }
+//    
+//    /*
+//     * STEP 12 MultiQC
+//     */
+//    process multiqc {
+//        publishDir "${params.outdir}/MultiQC", mode: 'copy'
+//    
+//        when:
+//        !params.skip_multiqc
+//    
+//        input:
+//        file multiqc_config from ch_multiqc_config
+//        file (fastqc:'fastqc/*') from fastqc_results.collect().ifEmpty([])
+//        file ('trimgalore/*') from trimgalore_results.collect()
+//        file ('alignment/*') from alignment_logs.collect()
+//        file ('rseqc/*') from rseqc_results.collect().ifEmpty([])
+//        file ('rseqc/*') from genebody_coverage_results.collect().ifEmpty([])
+//        file ('preseq/*') from preseq_results.collect().ifEmpty([])
+//        file ('dupradar/*') from dupradar_results.collect().ifEmpty([])
+//        file ('featureCounts/*') from featureCounts_logs.collect().ifEmpty([])
+//        file ('featureCounts_biotype/*') from featureCounts_biotype.collect().ifEmpty([])
+//        file ('sample_correlation_results/*') from sample_correlation_results.collect().ifEmpty([]) // If the Edge-R is not run create an Empty array
+//        file ('software_versions/*') from software_versions_yaml.collect()
+//        file ('workflow_summary/*') from workflow_summary_yaml.collect()
+//    
+//        output:
+//        file "*multiqc_report.html" into multiqc_report
+//        file "*_data"
+//    
+//        script:
+//        rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+//        rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+//        """
+//        multiqc . -f $rtitle $rfilename --config $multiqc_config \\
+//            -m custom_content -m picard -m preseq -m rseqc -m featureCounts -m hisat2 -m star -m cutadapt -m fastqc
+//        """
+//    }
+//}
+//
+///*
+// * STEP 13 - Output Description HTML
+// */
+//process output_documentation {
+//    publishDir "${params.outdir}/pipeline_info", mode: 'copy'
+//
+//    input:
+//    file output_docs from ch_output_docs
+//
+//    output:
+//    file "results_description.html"
+//
+//    script:
+//    """
+//    markdown_to_html.r $output_docs results_description.html
+//    """
+//}
 
-        output:
-        file "star" into star_index
-
-        script:
-        def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
-        """
-        mkdir star
-        STAR \\
-            --runMode genomeGenerate \\
-            --runThreadN ${task.cpus} \\
-            --sjdbGTFfile $gtf \\
-            --genomeDir star/ \\
-            --genomeFastaFiles $fasta \\
-            $avail_mem
-        """
-    }
-}
-/*
- * PREPROCESSING - Build HISAT2 splice sites file
- */
-if(params.aligner == 'hisat2' && !params.splicesites){
-    process makeHisatSplicesites {
-        tag "$gtf"
-        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-
-        input:
-        file gtf from gtf_makeHisatSplicesites
-
-        output:
-        file "${gtf.baseName}.hisat2_splice_sites.txt" into indexing_splicesites, alignment_splicesites
-
-        script:
-        """
-        hisat2_extract_splice_sites.py $gtf > ${gtf.baseName}.hisat2_splice_sites.txt
-        """
-    }
-}
-/*
- * PREPROCESSING - Build HISAT2 index
- */
-if(params.aligner == 'hisat2' && !params.hisat2_index && params.fasta){
-    process makeHISATindex {
-        tag "$fasta"
-        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-
-        input:
-        file fasta from ch_fasta_for_hisat_index
-        file indexing_splicesites from indexing_splicesites
-        file gtf from gtf_makeHISATindex
-
-        output:
-        file "${fasta.baseName}.*.ht2" into hs2_indices
-
-        script:
-        if( !task.memory ){
-            log.info "[HISAT2 index build] Available memory not known - defaulting to 0. Specify process memory requirements to change this."
-            avail_mem = 0
-        } else {
-            log.info "[HISAT2 index build] Available memory: ${task.memory}"
-            avail_mem = task.memory.toGiga()
-        }
-        if( avail_mem > params.hisatBuildMemory ){
-            log.info "[HISAT2 index build] Over ${params.hisatBuildMemory} GB available, so using splice sites and exons in HISAT2 index"
-            extract_exons = "hisat2_extract_exons.py $gtf > ${gtf.baseName}.hisat2_exons.txt"
-            ss = "--ss $indexing_splicesites"
-            exon = "--exon ${gtf.baseName}.hisat2_exons.txt"
-        } else {
-            log.info "[HISAT2 index build] Less than ${params.hisatBuildMemory} GB available, so NOT using splice sites and exons in HISAT2 index."
-            log.info "[HISAT2 index build] Use --hisatBuildMemory [small number] to skip this check."
-            extract_exons = ''
-            ss = ''
-            exon = ''
-        }
-        """
-        $extract_exons
-        hisat2-build -p ${task.cpus} $ss $exon $fasta ${fasta.baseName}.hisat2_index
-        """
-    }
-}
-
-/*
- * PREPROCESSING - txrevise gff3 to fasta
- */
-if(params.run_txrevise){
-    process gff_to_fasta {
-        tag "${txrevise_gff.baseName}"
-        publishDir path: { params.saveReference ? "${params.outdir}/Salmon/salmon_fasta" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-
-        input:
-        file txrevise_gff from txrevise_gff_ch
-        file genome_fasta from genome_fasta_ch.collect()
-
-        output:
-        file "${txrevise_gff.baseName}.fa" into txrevise_fasta_ch
-        
-        script:
-        """
-        gffread -w ${txrevise_gff.baseName}.fa -g $genome_fasta $txrevise_gff
-        """
-    }
-}
-
-if( params.run_salmon) { salmon_fasta_ch.mix(tx_fasta_ch).set { salmon_fasta_ch } }
-if( params.run_txrevise) { salmon_fasta_ch.mix(txrevise_fasta_ch).set { salmon_fasta_ch }  }
-
-/*
- * PREPROCESSING - Build Salmon index
- */
-if(params.run_salmon || params.run_txrevise ){
-    process makeSalmonIndex {
-        tag "${fasta.baseName}"
-        publishDir path: { params.saveReference ? "${params.outdir}/Salmon/salmon_index" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-        
-        input:
-        file fasta from salmon_fasta_ch
-
-        output:
-        file "${fasta.baseName}.index" into salmon_index
-        
-        script:
-        """
-        salmon index -t ${fasta} -i ${fasta.baseName}.index
-        """
-    }
-}
-
-/*
- * PREPROCESSING - Convert GFF3 to GTF
- */
-if(params.gff){
-  process convertGFFtoGTF {
-      tag "$gff"
-
-      input:
-      file gff from gffFile
-
-      output:
-      file "${gff.baseName}.gtf" into gtf_makeSTARindex, gtf_makeHisatSplicesites, gtf_makeHISATindex, gtf_makeBED12,
-            gtf_star, gtf_dupradar, gtf_featureCounts, gtf_dexseq
-
-      script:
-      """
-      gffread  $gff -T -o ${gff.baseName}.gtf
-      """
-  }
-}
-
-/*
- * PREPROCESSING - Build Exon GFF for dexseq
- */
-if (params.run_exon_quant){
-    process makeDexSeqExonGFF {
-        tag "${gtf.baseName}"
-        publishDir path: { params.saveReference ? "${params.outdir}/dexseq_exon_counts" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-
-        input:
-        file gtf from gtf_dexseq.collect()
-
-        output:
-        file "${gtf.baseName}.patched_contigs.DEXSeq.gff" into dexseq_gff_count_exons
-        
-        script:
-        """
-        cat $gtf | sed 's/chrM/chrMT/;s/chr//' > ${gtf.baseName}.patched_contigs.gtf
-        $baseDir/bin/dexseq/dexseq_prepare_annotation.py ${gtf.baseName}.patched_contigs.gtf ${gtf.baseName}.patched_contigs.DEXSeq.gff
-        """
-    }
-}
-
-/*
- * PREPROCESSING - Build BED12 file
- */
-if(!params.bed12){
-    process makeBED12 {
-        tag "$gtf"
-        publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
-                   saveAs: { params.saveReference ? it : null }, mode: 'copy'
-
-        input:
-        file gtf from gtf_makeBED12
-
-        output:
-        file "${gtf.baseName}.bed" into bed_rseqc, bed_genebody_coverage
-
-        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
-        """
-        gtf2bed $gtf > ${gtf.baseName}.bed
-        """
-    }
-}
-
-
-/*
- * STEP 1 - FastQC
- */
-process fastqc {
-    tag "$name"
-    publishDir "${params.outdir}/fastqc", mode: 'copy',
-        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
-
-    when:
-    !params.skip_qc && !params.skip_fastqc
-
-    input:
-    set val(name), file(reads) from raw_reads_fastqc
-
-    output:
-    file "*_fastqc.{zip,html}" into fastqc_results
-
-    script:
-    """
-    fastqc -q $reads
-    """
-}
-
-
-/*
- * STEP 2 - Trim Galore!
- */
-process trim_galore {
-    tag "$name"
-    publishDir "${params.outdir}/trim_galore", mode: 'copy',
-        saveAs: {filename ->
-            if (filename.indexOf("_fastqc") > 0) "FastQC/$filename"
-            else if (filename.indexOf("trimming_report.txt") > 0) "logs/$filename"
-            else if (!params.saveTrimmed && filename == "where_are_my_files.txt") filename
-            else if (params.saveTrimmed && filename != "where_are_my_files.txt") filename
-            else null
-        }
-
-    input:
-    set val(name), file(reads) from raw_reads_trimgalore
-    file wherearemyfiles from ch_where_trim_galore.collect()
-
-    output:
-    set val(name), file("*fq.gz") into trimmed_reads, trimmed_reads_salmon
-    file "*trimming_report.txt" into trimgalore_results
-    file "*_fastqc.{zip,html}" into trimgalore_fastqc_reports
-    file "where_are_my_files.txt"
-
-
-    script:
-    c_r1 = clip_r1 > 0 ? "--clip_r1 ${clip_r1}" : ''
-    c_r2 = clip_r2 > 0 ? "--clip_r2 ${clip_r2}" : ''
-    tpc_r1 = three_prime_clip_r1 > 0 ? "--three_prime_clip_r1 ${three_prime_clip_r1}" : ''
-    tpc_r2 = three_prime_clip_r2 > 0 ? "--three_prime_clip_r2 ${three_prime_clip_r2}" : ''
-    if (params.singleEnd) {
-        """
-        trim_galore --fastqc --gzip $c_r1 $tpc_r1 $reads
-        """
-    } else {
-        """
-        trim_galore --paired --fastqc --gzip $c_r1 $c_r2 $tpc_r1 $tpc_r2 $reads
-        """
-    }
-}
-
-
-/*
- * STEP 3 - align with STAR
- */
 // Function that checks the alignment rate of the STAR output
 // and returns true if the alignment passed and otherwise false
 skipped_poor_alignment = []
@@ -662,801 +1481,141 @@ def check_log(logs) {
         return true
     }
 }
-if(params.aligner == 'star' && !params.skip_alignment){
-    hisat_stdout = Channel.from(false)
-    process star {
-        tag "$prefix"
-        publishDir "${params.outdir}/STAR", mode: 'copy',
-            saveAs: {filename ->
-                if (filename.indexOf(".bam") == -1) "logs/$filename"
-                else if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
-                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") filename
-                else null
-            }
 
-        input:
-        // TODO (Nurlan Kerimov):  change the prefix to samplename in the future (did not do it because there is no test environment for changes)
-        set samplename, file(reads) from trimmed_reads
-        file index from star_index.collect()
-        file gtf from gtf_star.collect()
-        file wherearemyfiles from ch_where_star.collect()
+include { makeSTARindex; makeHisatSplicesites; makeHISATindex; 
+          gff_to_fasta; makeSalmonIndex; convertGFFtoGTF; 
+          makeDexSeqExonGFF; makeBED12} from './modules/preprocessing'
 
-        output:
-        // Add leafcutter and MBV bam channels to STAR alignment (here) too
-        set file("*Log.final.out"), file ('*.bam') into star_aligned
-        file "*.out" into alignment_logs
-        file "*SJ.out.tab"
-        file "*Log.out" into star_log
-        file "where_are_my_files.txt"
-        file "${prefix}Aligned.sortedByCoord.out.bam.bai" into bam_index_rseqc, bam_index_genebody
+include { fastqc;  trim_galore; star;  hisat2Align; 
+              hisat2_sortOutput; sort_by_name_BAM; salmon_quant; 
+              salmon_merge; leafcutter_bam_to_junc; leafcutter_cluster_junctions; 
+              count_exons; exon_count_merge; run_mbv;
+              get_software_versions; rseqc; createBigWig; 
+              genebody_coverage; preseq; markDuplicates;
+              dupradar; featureCounts; merge_featureCounts;
+              sample_correlation; workflow_summary_mqc; multiqc;
+              output_documentation} from './modules/rna-seq'
 
-        script:
-        prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
-        def star_mem = task.memory ?: params.star_memory ?: false
-        def avail_mem = star_mem ? "--limitBAMsortRAM ${star_mem.toBytes() - 100000000}" : ''
-        seqCenter = params.seqCenter ? "--outSAMattrRGline ID:$prefix 'CN:$params.seqCenter'" : ''
-        """
-        STAR --genomeDir $index \\
-            --sjdbGTFfile $gtf \\
-            --readFilesIn $reads  \\
-            --runThreadN ${task.cpus} \\
-            --twopassMode Basic \\
-            --outWigType bedGraph \\
-            --outSAMtype BAM SortedByCoordinate $avail_mem \\
-            --readFilesCommand zcat \\
-            --runDirPerm All_RWX \\
-             --outFileNamePrefix $prefix $seqCenter
-            
-        samtools index ${prefix}Aligned.sortedByCoord.out.bam
-        """
-    }
-    // Filter removes all 'aligned' channels that fail the check
-    star_aligned
-        .filter { logs, bams -> check_log(logs) }
-        .flatMap {  logs, bams -> bams }
-    .into { bam_count; bam_rseqc; bam_preseq; bam_markduplicates; bam_featurecounts; bam_for_genebody; bam_count_exons }
-}
-
-
-/*
- * STEP 3 - align with HISAT2
- */
-if(params.aligner == 'hisat2' && !params.skip_alignment){
-    star_log = Channel.from(false)
-    process hisat2Align {
-        tag "$samplename"
-        publishDir "${params.outdir}/HISAT2", mode: 'copy',
-            saveAs: {filename ->
-                if (filename.indexOf(".hisat2_summary.txt") > 0) "logs/$filename"
-                else if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
-                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") filename
-                else null
-            }
-
-        input:
-        set samplename, file(reads) from trimmed_reads
-        file hs2_indices from hs2_indices.collect()
-        file alignment_splicesites from alignment_splicesites.collect()
-        file wherearemyfiles from ch_where_hisat2.collect()
-
-        output:
-        file "${samplename}.bam" into hisat2_bam
-        file "${samplename}.hisat2_summary.txt" into alignment_logs
-        file "where_are_my_files.txt"
-
-        script:
-        index_base = hs2_indices[0].toString() - ~/.\d.ht2/
-        //prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
-        seqCenter = params.seqCenter ? "--rg-id ${samplename} --rg CN:${params.seqCenter.replaceAll('\\s','_')}" : ''
-        def rnastrandness = ''
-        if (forward_stranded && !unstranded){
-            rnastrandness = params.singleEnd ? '--rna-strandness F' : '--rna-strandness FR'
-        } else if (reverse_stranded && !unstranded){
-            rnastrandness = params.singleEnd ? '--rna-strandness R' : '--rna-strandness RF'
-        }
-        if (params.singleEnd) {
-            """
-            hisat2 -x $index_base \\
-                   -U $reads \\
-                   $rnastrandness \\
-                   --known-splicesite-infile $alignment_splicesites \\
-                   -p ${task.cpus} \\
-                   --met-stderr \\
-                   --new-summary \\
-                   --summary-file ${samplename}.hisat2_summary.txt $seqCenter \\
-                   | samtools view -bS -F 4 -F 256 - > ${samplename}.bam
-            """
-        } else {
-            """
-            hisat2 -x $index_base \\
-                   -1 ${reads[0]} \\
-                   -2 ${reads[1]} \\
-                   $rnastrandness \\
-                   --known-splicesite-infile $alignment_splicesites \\
-                   --no-mixed \\
-                   --no-discordant \\
-                   -p ${task.cpus} \\
-                   --met-stderr \\
-                   --new-summary \\
-                   --summary-file ${samplename}.hisat2_summary.txt $seqCenter \\
-                   | samtools view -bS -F 4 -F 8 -F 256 - > ${samplename}.bam
-            """
-        }
-    }
-
-    process hisat2_sortOutput {
-        tag "${hisat2_bam.baseName}"
-        publishDir "${params.outdir}/HISAT2", mode: 'copy',
-            saveAs: { filename ->
-                if (!params.saveAlignedIntermediates && filename == "where_are_my_files.txt") filename
-                else if (params.saveAlignedIntermediates && filename != "where_are_my_files.txt") "aligned_sorted/$filename"
-                else null
-            }
-
-        input:
-        file hisat2_bam
-        file wherearemyfiles from ch_where_hisat2_sort.collect()
-
-        output:
-        file "${hisat2_bam.baseName}.sorted.bam" into bam_count, bam_rseqc, bam_preseq, bam_markduplicates, bam_featurecounts, bam_for_genebody, leafcutter_bam, mbv_bam
-        file "${hisat2_bam.baseName}.sorted.bam.bai" into bam_index_rseqc, bam_index_genebody
-        file "where_are_my_files.txt"
-
-        script:
-        def avail_mem = task.memory ? "-m ${task.memory.toBytes() / task.cpus}" : ''
-        """
-        samtools sort \\
-            $hisat2_bam \\
-            -@ ${task.cpus} $avail_mem \\
-            -o ${hisat2_bam.baseName}.sorted.bam
-        samtools index ${hisat2_bam.baseName}.sorted.bam
-        """
-    }
-}
-
-if(!params.skip_alignment){
-    process sort_by_name_BAM {
-        tag "${bam_featurecounts.baseName - '.sorted'}"
-
-        input:
-        file bam_featurecounts
-
-        output:
-        file "${bam_featurecounts.baseName}ByName.bam" into bam_featurecounts_sorted, bam_count_exons
-
-        script:
-        def avail_mem = task.memory ? "-m ${task.memory.toBytes() / (task.cpus + 2)}" : ''
-        """
-        samtools sort -n \\
-            $bam_featurecounts \\
-            -@ ${task.cpus} $avail_mem \\
-            -o ${bam_featurecounts.baseName}ByName.bam
-        """
-    }
-}
-
-
-/*
- * STEP 3Salmon.1 - quant transcripts with Salmon
- */
-if(params.run_salmon || params.run_txrevise ){
-    process salmon_quant {
-        tag "$samplename - ${index.baseName}"
-        publishDir "${params.outdir}/Salmon/quant/${index.baseName}/", mode: 'copy',
-            saveAs: {filename -> if (params.saveIndividualQuants && filename.indexOf(".quant.sf") > 0) filename else null }
-
-        input:
-        set samplename, file(reads) from trimmed_reads_salmon
-        each index from salmon_index
-
-        output:
-        set val(index.baseName), file("${samplename}.quant.edited.sf") into salmon_merge_tx_ch
-        file '*.quant.sf'
-        
-        script:
-        def strandedness = params.unstranded ? 'U' : 'SR'
-        if (params.singleEnd) {
-            """
-            salmon quant --seqBias --useVBOpt --gcBias \\
-                         --libType $strandedness \\
-                         --index ${index} \\
-                         -r ${reads[0]} \\
-                         -p ${task.cpus} \\
-                         -o .
-            mv quant.sf ${samplename}.quant.sf
-            cat ${samplename}.quant.sf | csvtk cut -t -f "-Length,-EffectiveLength" | sed '1s/TPM/${samplename}_TPM/g' | sed '1s/NumReads/${samplename}_NumReads/g' > ${samplename}.quant.edited.sf
-            """
-        } else {
-            """
-            salmon quant --seqBias --useVBOpt --gcBias \\
-                         --libType I$strandedness \\
-                         --index $index \\
-                         -1 ${reads[0]} \\
-                         -2 ${reads[1]} \\
-                         -p ${task.cpus} \\
-                         -o .
-            mv quant.sf ${samplename}.quant.sf
-            cat ${samplename}.quant.sf | csvtk cut -t -f "-Length,-EffectiveLength" | sed '1s/TPM/${samplename}_TPM/g' | sed '1s/NumReads/${samplename}_NumReads/g' > ${samplename}.quant.edited.sf
-            """
-        }
-    }
-}
-
-/*
- * STEP 3Salmon.2 - merge salmon outputs
- */
-if(params.run_salmon || params.run_txrevise ){
-    process salmon_merge {
-        tag "merge_salmon_${index}"
-        publishDir "${params.outdir}/Salmon/merged_counts/", mode: 'copy',
-            saveAs: {filename -> if (filename.indexOf("TPM.merged.txt") > 0) "TPM/$filename"
-            else if (filename.indexOf(".NumReads.merged.txt") > 0) "NumReads/$filename"
-            else null }
-
-        input:
-        set index, file(input_files) from salmon_merge_tx_ch.groupTuple()
-
-        output:
-        file '*merged.txt'
-
-        script:
-        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
-        def single = input_files instanceof Path ? 1 : input_files.size()
-        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Name"'
-        """
-        $merge $input_files | csvtk rename -t -f Name -n phenotype_id > merged_TPMS_NumReads.tsv
-        csvtk cut -t -F -f -"*_NumReads" merged_TPMS_NumReads.tsv | sed 's/_TPM//g' > ${index}.TPM.merged.txt
-        csvtk cut -t -F -f -"*_TPM" merged_TPMS_NumReads.tsv | sed 's/_NumReads//g' > ${index}.NumReads.merged.txt
-        """
-    }
-}
-
-/*
- * Leafcutter quantification preparation step
- */
-if(params.run_leafcutter && !params.skip_alignment){
-    process leafcutter_bam_to_junc {
-        tag "${leafcutter_bam.baseName}"
-        
-        input:
-        file leafcutter_bam
-
-        output:
-        file '*.junc' into leafcutter_junc
-        
-        script:
-        """
-        samtools view $leafcutter_bam | python $baseDir/bin/leafcutter/filter_cs.py | $baseDir/bin/leafcutter/sam2bed.pl --use-RNA-strand - ${leafcutter_bam.baseName}.bed
-        $baseDir/bin/leafcutter/bed2junc.pl ${leafcutter_bam.baseName}.bed ${leafcutter_bam.baseName}.junc
-        """
-    }
-}
-
-/*
- * Leafcutter quantification step
- */
-if(params.run_leafcutter && !params.skip_alignment){
-    process leafcutter_cluster_junctions {
-        tag "${junc_files.baseName}"
-        publishDir "${params.outdir}/leafcutter", mode: 'copy'
-
-        input:
-        file junc_files from leafcutter_junc.map { it.toString() }.collectFile(name: 'junction_files.txt', newLine: true)
-
-        output:
-        file 'leafcutter_perind*.formatted.gz'
-        file 'junction_files.tar.gz'
-        
-        script:
-        """
-        tar -czf junction_files.tar.gz -T $junc_files
-        python $baseDir/bin/leafcutter/leafcutter_cluster.py -j $junc_files -r . -m ${params.leafcutter_min_split_reads} -l ${params.leafcutter_max_intron_length}
-        zcat leafcutter_perind.counts.gz | csvtk space2tab | csvtk rename -t -f chrom -n phenotype_id | sed 's/.sorted//g' | gzip -c > leafcutter_perind.counts.formatted.gz 
-        zcat leafcutter_perind_numers.counts.gz | sed '1s/^/phenotype_id /' | sed 's/.sorted//g' | csvtk space2tab | gzip -c > leafcutter_perind_numers.counts.formatted.gz
-        """        
-    }
-}
-
-/*
- * Quantify exon expression - featureCounts (exon level)
- */
-if (params.run_exon_quant && !params.skip_alignment){
-    process count_exons {
-        tag "${bam.simpleName}"
-        
-        publishDir "${params.outdir}/dexseq_exon_counts/quant_files", mode: 'copy',
-            saveAs: {filename -> if (params.saveIndividualQuants && filename.indexOf(".exoncount.txt") > 0) filename else null }
-
-
-        input:
-        file bam from bam_count_exons
-        file gff from dexseq_gff_count_exons.collect()
-
-        output:
-        file "${bam.simpleName}.exoncount.txt" into merge_exon_count_ch
-
-        script:
-        def featureCounts_direction = 0
-        if (forward_stranded && !unstranded) {
-            featureCounts_direction = 1
-        } else if (reverse_stranded && !unstranded){
-            featureCounts_direction = 2
-        }
-        """
-        featureCounts -p -t exonic_part -s $featureCounts_direction -f -O -a $gff -o ${bam.simpleName}.exoncount.txt $bam
-        """
-    }
-}
-
-/*
- * Merge exon counts files
- */
-if(params.run_exon_quant && !params.skip_alignment){
-    process exon_count_merge {
-        tag "merge exon ${input_files.size()} files"
-        publishDir "${params.outdir}/dexseq_exon_counts", mode: 'copy'
-
-        input:
-        file input_files from merge_exon_count_ch.toSortedList()
-
-        output:
-        file 'merged_exon_counts.tsv'
-
-        script:
-        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
-        def single = input_files instanceof Path ? 1 : input_files.size()
-        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Geneid,Start,Length,End,Chr,Strand"'
-        """
-        $merge $input_files | sed 's/.sortedByName.bam//g' | awk '\$1=\$1"_"\$2"_"\$3"_"\$4' OFS='\t' | csvtk rename -t -f Geneid_Chr_Start_End -n phenotype_id | csvtk cut -t -f "-Chr,-Start,-End,-Strand,-Length" > merged_exon_counts.tsv
-        """
-    }
-}
-
-/*
- * Run QTLtools MBV
- */
-if(params.run_mbv && !params.skip_alignment){
-    process run_mbv {
-        tag "${mbv_bam.simpleName}"
-        publishDir "${params.outdir}/MBV", mode: 'copy'
-
-        input:
-        file mbv_bam
-        file vcf from mbv_vcf_ch.collect()
-
-        output:
-        file "${mbv_bam.simpleName}.mbv_output.txt"
-
-        script:
-        """
-        samtools index $mbv_bam
-		QTLtools mbv --vcf $vcf --bam $mbv_bam --out ${mbv_bam.simpleName}.mbv_output.txt
-        """
-    }
-}
-
-/*
- * Parse software version numbers
- */
-process get_software_versions {
-
-    output:
-    file 'software_versions_mqc.yaml' into software_versions_yaml
-
-    script:
-    """
-    echo $workflow.manifest.version &> v_ngi_rnaseq.txt
-    echo $workflow.nextflow.version &> v_nextflow.txt
-    fastqc --version &> v_fastqc.txt
-    cutadapt --version &> v_cutadapt.txt
-    trim_galore --version &> v_trim_galore.txt
-    STAR --version &> v_star.txt
-    hisat2 --version &> v_hisat2.txt
-    stringtie --version &> v_stringtie.txt
-    preseq &> v_preseq.txt
-    read_duplication.py --version &> v_rseqc.txt
-    echo \$(bamCoverage --version 2>&1) > v_deeptools.txt
-    featureCounts -v &> v_featurecounts.txt
-    picard MarkDuplicates --version &> v_markduplicates.txt  || true
-    samtools --version &> v_samtools.txt
-    multiqc --version &> v_multiqc.txt
-    scrape_software_versions.py &> software_versions_mqc.yaml
-    """
-}
-
-if(!params.skip_alignment){
+workflow {
     /*
-     * STEP 4 - RSeQC analysis
-     */
-    process rseqc {
-        tag "${bam_rseqc.baseName - '.sorted'}"
-        publishDir "${params.outdir}/rseqc" , mode: 'copy',
-            saveAs: {filename ->
-                     if (filename.indexOf("bam_stat.txt") > 0)                      "bam_stat/$filename"
-                else if (filename.indexOf("infer_experiment.txt") > 0)              "infer_experiment/$filename"
-                else if (filename.indexOf("read_distribution.txt") > 0)             "read_distribution/$filename"
-                else if (filename.indexOf("read_duplication.DupRate_plot.pdf") > 0) "read_duplication/$filename"
-                else if (filename.indexOf("read_duplication.DupRate_plot.r") > 0)   "read_duplication/rscripts/$filename"
-                else if (filename.indexOf("read_duplication.pos.DupRate.xls") > 0)  "read_duplication/dup_pos/$filename"
-                else if (filename.indexOf("read_duplication.seq.DupRate.xls") > 0)  "read_duplication/dup_seq/$filename"
-                else if (filename.indexOf("RPKM_saturation.eRPKM.xls") > 0)         "RPKM_saturation/rpkm/$filename"
-                else if (filename.indexOf("RPKM_saturation.rawCount.xls") > 0)      "RPKM_saturation/counts/$filename"
-                else if (filename.indexOf("RPKM_saturation.saturation.pdf") > 0)    "RPKM_saturation/$filename"
-                else if (filename.indexOf("RPKM_saturation.saturation.r") > 0)      "RPKM_saturation/rscripts/$filename"
-                else if (filename.indexOf("inner_distance.txt") > 0)                "inner_distance/$filename"
-                else if (filename.indexOf("inner_distance_freq.txt") > 0)           "inner_distance/data/$filename"
-                else if (filename.indexOf("inner_distance_plot.r") > 0)             "inner_distance/rscripts/$filename"
-                else if (filename.indexOf("inner_distance_plot.pdf") > 0)           "inner_distance/plots/$filename"
-                else if (filename.indexOf("junction_plot.r") > 0)                   "junction_annotation/rscripts/$filename"
-                else if (filename.indexOf("junction.xls") > 0)                      "junction_annotation/data/$filename"
-                else if (filename.indexOf("splice_events.pdf") > 0)                 "junction_annotation/events/$filename"
-                else if (filename.indexOf("splice_junction.pdf") > 0)               "junction_annotation/junctions/$filename"
-                else if (filename.indexOf("junctionSaturation_plot.pdf") > 0)       "junction_saturation/$filename"
-                else if (filename.indexOf("junctionSaturation_plot.r") > 0)         "junction_saturation/rscripts/$filename"
-                else filename
-            }
-
-        when:
-        !params.skip_qc && !params.skip_rseqc
-
-        input:
-        file bam_rseqc
-        file index from bam_index_rseqc
-        file bed12 from bed_rseqc.collect()
-
-        output:
-        file "*.{txt,pdf,r,xls}" into rseqc_results
-
-        script:
-        """
-        infer_experiment.py -i $bam_rseqc -r $bed12 > ${bam_rseqc.baseName}.infer_experiment.txt
-        junction_annotation.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12
-        bam_stat.py -i $bam_rseqc 2> ${bam_rseqc.baseName}.bam_stat.txt
-        junction_saturation.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12 2> ${bam_rseqc.baseName}.junction_annotation_log.txt
-        inner_distance.py -i $bam_rseqc -o ${bam_rseqc.baseName}.rseqc -r $bed12
-        read_distribution.py -i $bam_rseqc -r $bed12 > ${bam_rseqc.baseName}.read_distribution.txt
-        read_duplication.py -i $bam_rseqc -o ${bam_rseqc.baseName}.read_duplication
-        """
+        PREPROCESSING
+    */
+    if(params.aligner == 'star' && !params.star_index && params.fasta){
+        makeSTARindex(ch_fasta_for_star_index, gtf_makeSTARindex) 
     }
 
-
-    /*
-     * Step 4.1 Rseqc create BigWig coverage
-     */
-
-    process createBigWig {
-        tag "${bam.baseName - 'sortedByCoord.out'}"
-        publishDir "${params.outdir}/bigwig", mode: 'copy'
-
-        when:
-        !params.skip_qc && !params.skip_genebody_coverage
-
-        input:
-        file bam from bam_for_genebody
-        file index from bam_index_genebody
-
-        output:
-        file "*.bigwig" into bigwig_for_genebody
-
-        script:
-        """
-        bamCoverage -b $bam -p ${task.cpus} -o ${bam.baseName}.bigwig
-        """
+    if(params.aligner == 'hisat2' && !params.splicesites){
+        makeHisatSplicesites(gtf_makeHisatSplicesites)
     }
-    /*
-     * Step 4.2 Rseqc genebody_coverage
-     */
-    process genebody_coverage {
-        tag "${bigwig.baseName}"
-           publishDir "${params.outdir}/rseqc" , mode: 'copy',
-            saveAs: {filename ->
-                if (filename.indexOf("geneBodyCoverage.curves.pdf") > 0)       "geneBodyCoverage/$filename"
-                else if (filename.indexOf("geneBodyCoverage.r") > 0)           "geneBodyCoverage/rscripts/$filename"
-                else if (filename.indexOf("geneBodyCoverage.txt") > 0)         "geneBodyCoverage/data/$filename"
-                else if (filename.indexOf("log.txt") > -1) false
-                else filename
-            }
 
-        when:
-        !params.skip_qc && !params.skip_genebody_coverage
+    if(params.aligner == 'hisat2' && !params.hisat2_index && params.fasta){
+        makeHISATindex(ch_fasta_for_hisat_index, indexing_splicesites, gtf_makeHISATindex)
+    }
 
-        input:
-        file bigwig from bigwig_for_genebody
-        file bed12 from bed_genebody_coverage.collect()
+    if(params.run_txrevise){
+        gff_to_fasta(txrevise_gff_ch, genome_fasta_ch.collect())
+    }
 
-        output:
-        file "*.{txt,pdf,r}" into genebody_coverage_results
+    if( params.run_salmon) { salmon_fasta_ch.mix(tx_fasta_ch).set { salmon_fasta_ch } }
+    if( params.run_txrevise) { salmon_fasta_ch.mix(txrevise_fasta_ch).set { salmon_fasta_ch }  }
 
-        script:
-        """
-        geneBody_coverage2.py \\
-            -i $bigwig \\
-            -o ${bigwig.baseName}.rseqc.txt \\
-            -r $bed12
-        """
+
+    if(params.run_salmon || params.run_txrevise ){
+        makeSalmonIndex(salmon_fasta_ch) 
+    }
+
+    if(params.gff){
+        convertGFFtoGTF(gffFile) {
+    }
+
+    if (params.run_exon_quant){
+        makeDexSeqExonGFF(gtf_dexseq.collect()) 
+    }
+
+    if(!params.bed12){
+        makeBED12(gtf_makeBED12)
     }
 
     /*
-     * STEP 5 - preseq analysis
-     */
-    process preseq {
-        tag "${bam_preseq.baseName - '.sorted'}"
-        publishDir "${params.outdir}/preseq", mode: 'copy'
+        MAIN PIPELINE
+    */
 
-        when:
-        !params.skip_qc && !params.skip_preseq
-
-        input:
-        file bam_preseq
-
-        output:
-        file "${bam_preseq.baseName}.ccurve.txt" into preseq_results
-
-        script:
-        """
-        preseq lc_extrap -v -B $bam_preseq -o ${bam_preseq.baseName}.ccurve.txt
-        """
-    }
-
-
-    /*
-     * STEP 6 Mark duplicates
-     */
-    process markDuplicates {
-        tag "${bam.baseName - '.sorted'}"
-        publishDir "${params.outdir}/markDuplicates", mode: 'copy',
-            saveAs: {filename -> filename.indexOf("_metrics.txt") > 0 ? "metrics/$filename" : "$filename"}
-
-        when:
-        !params.skip_qc && !params.skip_dupradar
-
-        input:
-        file bam from bam_markduplicates
-
-        output:
-        file "${bam.baseName}.markDups.bam" into bam_md
-        file "${bam.baseName}.markDups_metrics.txt" into picard_results
-        file "${bam.baseName}.markDups.bam.bai"
-
-        script:
-        if( !task.memory ){
-            log.info "[Picard MarkDuplicates] Available memory not known - defaulting to 3GB. Specify process memory requirements to change this."
-            avail_mem = 3
-        } else {
-            avail_mem = task.memory.toGiga()
-        }
-        """
-        picard -Xmx${avail_mem}g MarkDuplicates \\
-            INPUT=$bam \\
-            OUTPUT=${bam.baseName}.markDups.bam \\
-            METRICS_FILE=${bam.baseName}.markDups_metrics.txt \\
-            REMOVE_DUPLICATES=false \\
-            ASSUME_SORTED=true \\
-            PROGRAM_RECORD_ID='null' \\
-            VALIDATION_STRINGENCY=LENIENT
-        samtools index ${bam.baseName}.markDups.bam
-        """
-    }
-
-
-    /*
-     * STEP 7 - dupRadar
-     */
-    process dupradar {
-
-        tag "${bam_md.baseName - '.sorted.markDups'}"
-        publishDir "${params.outdir}/dupradar", mode: 'copy',
-            saveAs: {filename ->
-                if (filename.indexOf("_duprateExpDens.pdf") > 0) "scatter_plots/$filename"
-                else if (filename.indexOf("_duprateExpBoxplot.pdf") > 0) "box_plots/$filename"
-                else if (filename.indexOf("_expressionHist.pdf") > 0) "histograms/$filename"
-                else if (filename.indexOf("_dupMatrix.txt") > 0) "gene_data/$filename"
-                else if (filename.indexOf("_duprateExpDensCurve.txt") > 0) "scatter_curve_data/$filename"
-                else if (filename.indexOf("_intercept_slope.txt") > 0) "intercepts_slopes/$filename"
-                else "$filename"
-            }
-
-        when:
-        !params.skip_qc && !params.skip_dupradar
-
-        input:
-        file bam_md
-        file gtf from gtf_dupradar.collect()
-
-        output:
-        file "*.{pdf,txt}" into dupradar_results
-
-        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
-        def dupradar_direction = 0
-        if (forward_stranded && !unstranded) {
-            dupradar_direction = 1
-        } else if (reverse_stranded && !unstranded){
-            dupradar_direction = 2
-        }
-        def paired = params.singleEnd ? 'single' :  'paired'
-        """
-        dupRadar.r $bam_md $gtf $dupradar_direction $paired ${task.cpus}
-        """
-    }
-
-    /*
-     * STEP 8 Feature counts
-     */
-    process featureCounts {
-        tag "${bam_featurecounts_sorted.baseName - '.sortedByName'}"
-        publishDir "${params.outdir}/featureCounts", mode: 'copy',
-            saveAs: {filename ->
-                if (params.saveIndividualQuants && filename.indexOf("biotype_counts") > 0) "biotype_counts/$filename"
-                else if (params.saveIndividualQuants && filename.indexOf("_gene.featureCounts.txt.summary") > 0) "gene_count_summaries/$filename"
-                else if (params.saveIndividualQuants && filename.indexOf("_gene.featureCounts.txt") > 0) "gene_counts/$filename"
-                else null
-            }
-
-        input:
-        file bam_featurecounts_sorted
-        file gtf from gtf_featureCounts.collect()
-        file biotypes_header from ch_biotypes_header.collect()
-
-        output:
-        file "${sample_name}_gene.featureCounts.txt" into geneCounts, featureCounts_to_merge
-        file "${sample_name}_gene.featureCounts.txt.summary" into featureCounts_logs
-        file "${sample_name}_biotype_counts*mqc.{txt,tsv}" into featureCounts_biotype
-
-        script:
-        def featureCounts_direction = 0
-        def extraAttributes = params.fcExtraAttributes ? "--extraAttributes ${params.fcExtraAttributes}" : ''
-        if (forward_stranded && !unstranded) {
-            featureCounts_direction = 1
-        } else if (reverse_stranded && !unstranded){
-            featureCounts_direction = 2
-        }
-        // Try to get real sample name
-        sample_name = bam_featurecounts_sorted.baseName - 'ByName'
-        """
-        mv $bam_featurecounts_sorted ${sample_name}.bam
-        featureCounts -a $gtf -g gene_id --donotsort -o ${sample_name}_gene.featureCounts.txt $extraAttributes -p -s $featureCounts_direction ${sample_name}.bam
-        featureCounts -a $gtf -g gene_type --donotsort -o ${sample_name}_biotype.featureCounts.txt -p -s $featureCounts_direction ${sample_name}.bam
-        cut -f 1,7 ${sample_name}_biotype.featureCounts.txt | tail -n +3 | cat $biotypes_header - >> ${sample_name}_biotype_counts_mqc.txt
-        mqc_features_stat.py ${sample_name}_biotype_counts_mqc.txt -s $sample_name -f rRNA -o ${sample_name}_biotype_counts_gs_mqc.tsv
-        """
-    }
-
-    /*
-     * STEP 9 - Merge featurecounts
-     */
-    process merge_featureCounts {
-        tag "merge ${input_files.size()} files"
-        publishDir "${params.outdir}/featureCounts", mode: 'copy'
-
-        input:
-        file input_files from featureCounts_to_merge.toSortedList()
-
-        output:
-        file 'merged_gene_counts.txt'
-
-        script:
-        //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.
-        def single = input_files instanceof Path ? 1 : input_files.size()
-        def merge = (single == 1) ? 'cat' : 'csvtk join -t -f "Geneid,Start,Length,End,Chr,Strand,gene_name"'
-        """
-        $merge $input_files | csvtk cut -t -f "-Start,-Chr,-End,-Length,-Strand" | sed 's/Aligned.sortedByCoord.out.markDups.bam//g' | sed 's/.sorted.bam//g' | csvtk rename -t -f Geneid -n phenotype_id | csvtk cut -t -f "-gene_name" > merged_gene_counts.txt
-        """
-    }
-
-    /*
-     * STEP 11 - edgeR MDS and heatmap
-     */
-    process sample_correlation {
-        tag "${input_files[0].toString() - '.sorted_gene.featureCounts.txt' - 'Aligned'}"
-        publishDir "${params.outdir}/sample_correlation", mode: 'copy'
-
-        when:
-        !params.skip_qc && !params.skip_edger
-
-        input:
-        file input_files from geneCounts.collect()
-        val num_bams from bam_count.count()
-        file mdsplot_header from ch_mdsplot_header
-        file heatmap_header from ch_heatmap_header
-
-        output:
-        file "*.{txt,pdf,csv}" into sample_correlation_results
-
-        when:
-        num_bams > 2 && (!params.sampleLevel)
-
-        script: // This script is bundled with the pipeline, in nfcore/rnaseq/bin/
-        """
-        edgeR_heatmap_MDS.r $input_files
-        cat $mdsplot_header edgeR_MDS_Aplot_coordinates_mqc.csv >> tmp_file
-        mv tmp_file edgeR_MDS_Aplot_coordinates_mqc.csv
-        cat $heatmap_header log2CPM_sample_distances_mqc.csv >> tmp_file
-        mv tmp_file log2CPM_sample_distances_mqc.csv
-        """
-    }
-
-    /*
-     * Pipeline parameters to go into MultiQC report
-     */
-    process workflow_summary_mqc {
     
-        when:
-        !params.skip_multiqc
-    
-        output:
-        file 'workflow_summary_mqc.yaml' into workflow_summary_yaml
-    
-        exec:
-        def yaml_file = task.workDir.resolve('workflow_summary_mqc.yaml')
-        yaml_file.text  = """
-        id: 'nfcore-rnaseq-summary'
-        description: " - this information is collected when the pipeline is started."
-        section_name: 'nfcore/rnaseq Workflow Summary'
-        section_href: 'https://github.com/nf-core/rnaseq'
-        plot_type: 'html'
-        data: |
-            <dl class=\"dl-horizontal\">
-    ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }.join("\n")}
-            </dl>
-        """.stripIndent()
+    fastqc(raw_reads_fastqc)
+    trim_galore(raw_reads_trimgalore, ch_where_trim_galore.collect())
+
+    if(params.aligner == 'star' && !params.skip_alignment){
+        hisat_stdout = Channel.from(false)
+        star(trimmed_reads, star_index.collect(), gtf_star.collect(), ch_where_star.collect()) 
+
+        // Filter removes all 'aligned' channels that fail the check
+        star_aligned
+            .filter { logs, bams -> check_log(logs) }
+            .flatMap {  logs, bams -> bams }
+        .into { bam_count; bam_rseqc; bam_preseq; bam_markduplicates; bam_featurecounts; bam_for_genebody; bam_count_exons }
     }
-    
-    /*
-     * STEP 12 MultiQC
-     */
-    process multiqc {
-        publishDir "${params.outdir}/MultiQC", mode: 'copy'
-    
-        when:
-        !params.skip_multiqc
-    
-        input:
-        file multiqc_config from ch_multiqc_config
-        file (fastqc:'fastqc/*') from fastqc_results.collect().ifEmpty([])
-        file ('trimgalore/*') from trimgalore_results.collect()
-        file ('alignment/*') from alignment_logs.collect()
-        file ('rseqc/*') from rseqc_results.collect().ifEmpty([])
-        file ('rseqc/*') from genebody_coverage_results.collect().ifEmpty([])
-        file ('preseq/*') from preseq_results.collect().ifEmpty([])
-        file ('dupradar/*') from dupradar_results.collect().ifEmpty([])
-        file ('featureCounts/*') from featureCounts_logs.collect().ifEmpty([])
-        file ('featureCounts_biotype/*') from featureCounts_biotype.collect().ifEmpty([])
-        file ('sample_correlation_results/*') from sample_correlation_results.collect().ifEmpty([]) // If the Edge-R is not run create an Empty array
-        file ('software_versions/*') from software_versions_yaml.collect()
-        file ('workflow_summary/*') from workflow_summary_yaml.collect()
-    
-        output:
-        file "*multiqc_report.html" into multiqc_report
-        file "*_data"
-    
-        script:
-        rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
-        rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
-        """
-        multiqc . -f $rtitle $rfilename --config $multiqc_config \\
-            -m custom_content -m picard -m preseq -m rseqc -m featureCounts -m hisat2 -m star -m cutadapt -m fastqc
-        """
+
+    if(params.aligner == 'hisat2' && !params.skip_alignment){
+        star_log = Channel.from(false)
+
+        hisat2Align(trimmed_reads, hs2_indices.collect(), alignment_splicesites.collect(), ch_where_hisat2.collect()) 
+        hisat2_sortOutput(hisat2_bam, ch_where_hisat2_sort.collect()) 
     }
+
+    if(!params.skip_alignment){
+        sort_by_name_BAM(bam_featurecounts) 
+    }
+
+    if(params.run_salmon || params.run_txrevise ){
+        salmon_quant(trimmed_reads_salmon, salmon_index)
+        salmon_merge(salmon_merge_tx_ch.groupTuple()) 
+    }
+
+    if(params.run_leafcutter && !params.skip_alignment){
+        leafcutter_bam_to_junc(leafcutter_bam)
+        leafcutter_cluster_junctions(leafcutter_junc.map { it.toString() }.collectFile(name: 'junction_files.txt', newLine: true))   
+    }
+
+
+    if (params.run_exon_quant && !params.skip_alignment){
+        count_exons(bam_count_exons, dexseq_gff_count_exons.collect())
+        exon_count_merge(merge_exon_count_ch.toSortedList())
+    }
+
+    if(params.run_mbv && !params.skip_alignment){
+        run_mbv(mbv_bam, mbv_vcf_ch.collect())
+    }
+
+    get_software_versions()
+
+    if(!params.skip_alignment){
+
+        rseqc(bam_rseqc, bam_index_rseqc, bed_rseqc.collect())
+        createBigWig(bam_for_genebody, bam_index_genebody)
+        genebody_coverage(bigwig_for_genebody, bed_genebody_coverage.collect())
+        preseq(bam_preseq) 
+        markDuplicates(bam_markduplicates)
+        dupradar(bam_md, gtf_dupradar.collect())
+        featureCounts(bam_featurecounts_sorted, gtf_featureCounts.collect(), ch_biotypes_header.collect())
+        merge_featureCounts(featureCounts_to_merge.toSortedList())
+        sample_correlation(geneCounts.collect(), bam_count.count(), ch_mdsplot_header, ch_heatmap_header) 
+        workflow_summary_mqc()
+        multiqc(ch_multiqc_config,
+                fastqc_results.collect().ifEmpty([]),
+                trimgalore_results.collect(),
+                alignment_logs.collect(),
+                rseqc_results.collect().ifEmpty([]),
+                genebody_coverage_results.collect().ifEmpty([]),
+                preseq_results.collect().ifEmpty([]),
+                dupradar_results.collect().ifEmpty([]),
+                featureCounts_logs.collect().ifEmpty([]),
+                featureCounts_biotype.collect().ifEmpty([]),
+                sample_correlation_results.collect().ifEmpty([]),
+                software_versions_yaml.collect(),
+                workflow_summary_yaml.collect())
+    }
+    output_documentation(from ch_output_docs) 
 }
-
-/*
- * STEP 13 - Output Description HTML
- */
-process output_documentation {
-    publishDir "${params.outdir}/pipeline_info", mode: 'copy'
-
-    input:
-    file output_docs from ch_output_docs
-
-    output:
-    file "results_description.html"
-
-    script:
-    """
-    markdown_to_html.r $output_docs results_description.html
-    """
-}
-
 
 /*
  * Completion e-mail notification
