@@ -30,6 +30,7 @@ process hisat2Align {
         }
 
     input:
+    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     tuple val(samplename), file(reads)
     file hs2_indices
     file alignment_splicesites
@@ -136,14 +137,15 @@ process sort_by_name_BAM {
 
 
 workflow align_hisat2 {
-    take: 
+    take:
+        variables 
         gtf
         trimmed_reads
         hs2_indices
         ch_wherearemyfiles
     main:
         makeHisatSplicesites(gtf)
-        hisat2Align(trimmed_reads, hs2_indices.collect(), makeHisatSplicesites.out.splicesites, ch_wherearemyfiles.collect())
+        hisat2Align(variables, trimmed_reads, hs2_indices.collect(), makeHisatSplicesites.out.splicesites, ch_wherearemyfiles.collect())
         hisat2_sortOutput(hisat2Align.out.hisat2_bam, ch_wherearemyfiles.collect())
         sort_by_name_BAM(hisat2_sortOutput.out.bam)
     emit:

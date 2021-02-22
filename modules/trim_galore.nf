@@ -12,6 +12,7 @@ process trim_galore_pr {
         }
 
     input:
+    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     tuple val(name), file(reads)
     file wherearemyfiles
 
@@ -40,10 +41,11 @@ process trim_galore_pr {
 
 workflow trim_galore {
     take: 
+        variables
         raw_reads
         ch_wherearemyfiles
     main:
-        trim_galore_pr(raw_reads, ch_wherearemyfiles)
+        trim_galore_pr(variables, raw_reads, ch_wherearemyfiles)
     emit:
         trimmed_reads = trim_galore_pr.out.trimmed_reads
 }

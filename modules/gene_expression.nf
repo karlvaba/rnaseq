@@ -11,6 +11,7 @@ process featureCounts {
         }
 
     input:
+    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     file bam_featurecounts_sorted
     file gtf
     file biotypes_header
@@ -61,11 +62,12 @@ process merge_featureCounts {
 }
 
 workflow gene_expression {
-    take: 
+    take:
+        variables
         bam_sorted 
         gtf 
         ch_biotypes_header
     main:
-        featureCounts(bam_sorted, gtf, ch_biotypes_header)
+        featureCounts(variables, bam_sorted, gtf, ch_biotypes_header)
         merge_featureCounts(featureCounts.out.geneCounts.toSortedList())
 }
