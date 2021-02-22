@@ -17,9 +17,9 @@ process trim_galore_pr {
 
     output:
     tuple val(name), file("*fq.gz"), emit: trimmed_reads
-    file "*trimming_report.txt", emit: trimgalore_results
-    file "*_fastqc.{zip,html}", emit: trimgalore_fastqc_reports
-    file "where_are_my_files.txt"
+    path "*trimming_report.txt", emit: trimgalore_results
+    path "*_fastqc.{zip,html}", emit: trimgalore_fastqc_reports
+    path "where_are_my_files.txt"
 
 
     script:

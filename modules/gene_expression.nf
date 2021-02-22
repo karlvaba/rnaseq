@@ -16,9 +16,9 @@ process featureCounts {
     file biotypes_header
 
     output:
-    file "${sample_name}_gene.featureCounts.txt", emit: geneCounts
-    file "${sample_name}_gene.featureCounts.txt.summary", emit: featureCounts_logs
-    file "${sample_name}_biotype_counts*mqc.{txt,tsv}", emit: featureCounts_biotype
+    path "${sample_name}_gene.featureCounts.txt", emit: geneCounts
+    path "${sample_name}_gene.featureCounts.txt.summary", emit: featureCounts_logs
+    path "${sample_name}_biotype_counts*mqc.{txt,tsv}", emit: featureCounts_biotype
 
     script:
     def featureCounts_direction = 0
@@ -49,7 +49,7 @@ process merge_featureCounts {
     file input_files
 
     output:
-    file 'merged_gene_counts.txt'
+    path 'merged_gene_counts.txt'
 
     script:
     //if we only have 1 file, just use cat and pipe output to csvtk. Else join all files first, and then remove unwanted column names.

@@ -8,7 +8,7 @@ process makeHisatSplicesites {
     input:
     file gtf
     output:
-    file "${gtf.baseName}.hisat2_splice_sites.txt", emit: splicesites
+    path "${gtf.baseName}.hisat2_splice_sites.txt", emit: splicesites
 
     script:
     """
@@ -36,9 +36,9 @@ process hisat2Align {
     file wherearemyfiles
 
     output:
-    file "${samplename}.bam", emit: hisat2_bam
-    file "${samplename}.hisat2_summary.txt", emit: alignment_logs
-    file "where_are_my_files.txt"
+    path "${samplename}.bam", emit: hisat2_bam
+    path "${samplename}.hisat2_summary.txt", emit: alignment_logs
+    path "where_are_my_files.txt"
 
     script:
     index_base = hs2_indices[0].toString() - ~/.\d.ht2/
@@ -97,9 +97,9 @@ process hisat2_sortOutput {
     file wherearemyfiles
 
     output:
-    file "${hisat2_bam.baseName}.sorted.bam", emit: bam
-    file "${hisat2_bam.baseName}.sorted.bam.bai", emit: bam_index
-    file "where_are_my_files.txt"
+    path "${hisat2_bam.baseName}.sorted.bam", emit: bam
+    path "${hisat2_bam.baseName}.sorted.bam.bai", emit: bam_index
+    path "where_are_my_files.txt"
 
     script:
     def avail_mem = task.memory ? "-m ${task.memory.toBytes() / task.cpus}" : ''
@@ -122,7 +122,7 @@ process sort_by_name_BAM {
     file bam_featurecounts
 
     output:
-    file "${bam_featurecounts.baseName}ByName.bam", emit: bam_sorted
+    path "${bam_featurecounts.baseName}ByName.bam", emit: bam_sorted
 
     script:
     def avail_mem = task.memory ? "-m ${task.memory.toBytes() / (task.cpus + 2)}" : ''
