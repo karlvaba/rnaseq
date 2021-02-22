@@ -11,7 +11,6 @@ process featureCounts {
         }
 
     input:
-    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     file bam_featurecounts_sorted
     file gtf
     file biotypes_header
@@ -24,9 +23,9 @@ process featureCounts {
     script:
     def featureCounts_direction = 0
     def extraAttributes = params.fcExtraAttributes ? "--extraAttributes ${params.fcExtraAttributes}" : ''
-    if (forward_stranded && !unstranded) {
+    if (params.forward_stranded && !params.unstranded) {
         featureCounts_direction = 1
-    } else if (reverse_stranded && !unstranded){
+    } else if (params.reverse_stranded && !params.unstranded){
         featureCounts_direction = 2
     }
     // Try to get real sample name
@@ -63,11 +62,10 @@ process merge_featureCounts {
 
 workflow gene_expression {
     take:
-        variables
         bam_sorted 
         gtf 
         ch_biotypes_header
     main:
-        featureCounts(variables, bam_sorted, gtf, ch_biotypes_header)
+        featureCounts(bam_sorted, gtf, ch_biotypes_header)
         merge_featureCounts(featureCounts.out.geneCounts.toSortedList())
 }

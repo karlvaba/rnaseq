@@ -373,16 +373,14 @@ forward_stranded = params.forward_stranded
 reverse_stranded = params.reverse_stranded
 unstranded = params.unstranded
 
-variables = Channel.of(clip_r1, clip_r2, three_prime_clip_r1, three_prime_clip_r2, 
-        forward_stranded, reverse_stranded, unstranded)
 
 workflow {
-    trim_galore(variables, raw_reads, ch_wherearemyfiles)
+    trim_galore(raw_reads, ch_wherearemyfiles)
 
     if(!params.skip_alignment){
         star_log = Channel.from(false)
-        align_hisat2(variables, gtf, trim_galore.out.trimmed_reads, hs2_indices, ch_wherearemyfiles)
-        gene_expression(variables, align_hisat2.out.bam_sorted, gtf, ch_biotypes_header)
+        align_hisat2(gtf, trim_galore.out.trimmed_reads, hs2_indices, ch_wherearemyfiles)
+        gene_expression(align_hisat2.out.bam_sorted, gtf, ch_biotypes_header)
     }   
 }
 

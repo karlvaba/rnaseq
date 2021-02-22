@@ -12,7 +12,6 @@ process trim_galore_pr {
         }
 
     input:
-    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     tuple val(name), file(reads)
     file wherearemyfiles
 
@@ -24,10 +23,10 @@ process trim_galore_pr {
 
 
     script:
-    c_r1 = clip_r1 > 0 ? "--clip_r1 ${clip_r1}" : ''
-    c_r2 = clip_r2 > 0 ? "--clip_r2 ${clip_r2}" : ''
-    tpc_r1 = three_prime_clip_r1 > 0 ? "--three_prime_clip_r1 ${three_prime_clip_r1}" : ''
-    tpc_r2 = three_prime_clip_r2 > 0 ? "--three_prime_clip_r2 ${three_prime_clip_r2}" : ''
+    c_r1 = params.clip_r1 > 0 ? "--clip_r1 ${params.clip_r1}" : ''
+    c_r2 = params.clip_r2 > 0 ? "--clip_r2 ${params.clip_r2}" : ''
+    tpc_r1 = params.three_prime_clip_r1 > 0 ? "--three_prime_clip_r1 ${params.three_prime_clip_r1}" : ''
+    tpc_r2 = params.three_prime_clip_r2 > 0 ? "--three_prime_clip_r2 ${params.three_prime_clip_r2}" : ''
     if (params.singleEnd) {
         """
         trim_galore --fastqc --gzip $c_r1 $tpc_r1 $reads
@@ -41,11 +40,10 @@ process trim_galore_pr {
 
 workflow trim_galore {
     take: 
-        variables
         raw_reads
         ch_wherearemyfiles
     main:
-        trim_galore_pr(variables, raw_reads, ch_wherearemyfiles)
+        trim_galore_pr(raw_reads, ch_wherearemyfiles)
     emit:
         trimmed_reads = trim_galore_pr.out.trimmed_reads
 }

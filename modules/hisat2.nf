@@ -30,7 +30,6 @@ process hisat2Align {
         }
 
     input:
-    tuple val(clip_r1), val(clip_r2), val(three_prime_clip_r1), val(three_prime_clip_r2), val(forward_stranded), val(reverse_stranded), val(unstranded)
     tuple val(samplename), file(reads)
     file hs2_indices
     file alignment_splicesites
@@ -46,9 +45,9 @@ process hisat2Align {
     //prefix = reads[0].toString() - ~/(_R1)?(_trimmed)?(_val_1)?(\.fq)?(\.fastq)?(\.gz)?$/
     seqCenter = params.seqCenter ? "--rg-id ${samplename} --rg CN:${params.seqCenter.replaceAll('\\s','_')}" : ''
     def rnastrandness = ''
-    if (forward_stranded && !unstranded){
+    if (params.forward_stranded && !params.unstranded){
         rnastrandness = params.singleEnd ? '--rna-strandness F' : '--rna-strandness FR'
-    } else if (reverse_stranded && !unstranded){
+    } else if (params.reverse_stranded && !params.unstranded){
         rnastrandness = params.singleEnd ? '--rna-strandness R' : '--rna-strandness RF'
     }
     if (params.singleEnd) {
@@ -138,14 +137,13 @@ process sort_by_name_BAM {
 
 workflow align_hisat2 {
     take:
-        variables 
         gtf
         trimmed_reads
         hs2_indices
         ch_wherearemyfiles
     main:
         makeHisatSplicesites(gtf)
-        hisat2Align(variables, trimmed_reads, hs2_indices.collect(), makeHisatSplicesites.out.splicesites, ch_wherearemyfiles.collect())
+        hisat2Align(trimmed_reads, hs2_indices.collect(), makeHisatSplicesites.out.splicesites, ch_wherearemyfiles.collect())
         hisat2_sortOutput(hisat2Align.out.hisat2_bam, ch_wherearemyfiles.collect())
         sort_by_name_BAM(hisat2_sortOutput.out.bam)
     emit:
