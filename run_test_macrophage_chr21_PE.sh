@@ -1,6 +1,6 @@
 ../nextflow run main.nf\
  -profile tartu_hpc\
- --readPathsFile data/readPathsFile_macrophages_PE.tsv\
+ --readPathsFile ./rnaseq/data/readPathsFile_macrophages_PE.tsv\
  --reverse_stranded\
  --hisat2_index /gpfs/hpc/projects/genomic_references/annotations/eQTLCatalogue/v0.1/hisat2_index_v96/Homo_sapiens.GRCh38.dna.primary_assembly\
  --aligner 'hisat2'\

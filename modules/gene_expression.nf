@@ -67,5 +67,5 @@ workflow gene_expression {
         ch_biotypes_header
     main:
         featureCounts(bam_sorted, gtf, ch_biotypes_header)
-        merge_featureCounts(geneCounts.toSortedList())
+        merge_featureCounts(featureCounts.out.geneCounts.toSortedList())
 }
