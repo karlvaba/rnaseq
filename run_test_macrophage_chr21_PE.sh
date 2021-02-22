@@ -1,4 +1,4 @@
-nextflow run main.nf\
+../nextflow run main.nf\
  -profile tartu_hpc\
  --readPathsFile data/readPathsFile_macrophages_PE.tsv\
  --reverse_stranded\

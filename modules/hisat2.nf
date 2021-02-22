@@ -30,7 +30,7 @@ process hisat2Align {
         }
 
     input:
-    tuple samplename, file(reads)
+    tuple val(samplename), file(reads)
     file hs2_indices
     file alignment_splicesites
     file wherearemyfiles
