@@ -148,4 +148,5 @@ workflow align_hisat2 {
         sort_by_name_BAM(hisat2_sortOutput.out.bam)
     emit:
         bam_sorted = sort_by_name_BAM.out.bam_sorted
+        bam = hisat2_sortOutput.out.bam
 }

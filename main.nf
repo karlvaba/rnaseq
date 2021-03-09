@@ -110,9 +110,9 @@ if (params.help){
 }
 
 // Check if genome exists in the config file
-if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
+/*if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
     exit 1, "The provided genome '${params.genome}' is not available in the iGenomes file. Currently the available genomes are ${params.genomes.keySet().join(", ")}"
-  }
+  }*/
 
 // Reference index path configuration
 // Define these here - after the profiles are loaded with the iGenomes paths
@@ -141,7 +141,7 @@ reverse_stranded = params.reverse_stranded
 unstranded = params.unstranded
 
 // Preset trimming options
-if (params.pico){
+/*if (params.pico){
     clip_r1 = 3
     clip_r2 = 0
     three_prime_clip_r1 = 0
@@ -149,7 +149,7 @@ if (params.pico){
     forward_stranded = true
     reverse_stranded = false
     unstranded = false
-}
+}*/
 
 
 // Validate inputs
@@ -363,25 +363,44 @@ if( workflow.profile == 'standard'){
 }
 
 
-
 include { trim_galore } from './modules/trim_galore'
 include { align_hisat2 } from './modules/hisat2'
 include { gene_expression } from './modules/gene_expression'
-
-
-forward_stranded = params.forward_stranded
-reverse_stranded = params.reverse_stranded
-unstranded = params.unstranded
-
+include { run_mbv } from './modules/mbv'
+include { exon_expression } from './modules/exon_expression'
+include { transcript_expression } from './modules/transcript'
+include { gff_to_fasta } from './modules/transcript'
 
 workflow {
     trim_galore(raw_reads, ch_wherearemyfiles)
 
-    if(!params.skip_alignment){
+    if(!params.skip_alignment) {
         star_log = Channel.from(false)
+
         align_hisat2(gtf, trim_galore.out.trimmed_reads, hs2_indices, ch_wherearemyfiles)
+
+        if (params.run_mbv) {
+            run_mbv(bam, mbv_vcf_ch.collect())
+        }
+
         gene_expression(align_hisat2.out.bam_sorted, gtf, ch_biotypes_header)
-    }   
+
+        if (params.run_exon_quant) {
+            exon_expression(gtf, bam)
+        }
+
+        if (params.run_txrevise) {
+            gff_to_fasta(txrevise_gff_ch, genome_fasta_ch.collect())
+        }
+
+        if( params.run_salmon) { salmon_fasta_ch.mix(tx_fasta_ch).set { salmon_fasta_ch } }
+        if( params.run_salmon) { salmon_fasta_ch.mix(gff_to_fasta.out.txrevise_fasta_ch).set { salmon_fasta_ch } }
+
+        if(params.run_salmon || params.run_txrevise ) {
+            transcript_expression(salmon_fasta_ch, trim_galore.out.trimmed_reads)
+        }
+
+    }
 }
 
 /*
