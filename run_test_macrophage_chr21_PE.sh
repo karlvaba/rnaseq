@@ -11,9 +11,7 @@
  --run_tx_exp_quant\
  --run_splicing_exp_quant\
  --run_exon_quant\
- --run_mbv\
  --run_salmon\
- --run_txrevise
  --saveTrimmed\
  --saveAlignedIntermediates\
  --gtf /gpfs/hpc/projects/genomic_references/annotations/eQTLCatalogue/v0.1/gencode.v30.annotation.no_chr.gtf\

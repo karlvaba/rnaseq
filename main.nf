@@ -380,13 +380,13 @@ workflow {
         align_hisat2(gtf, trim_galore.out.trimmed_reads, hs2_indices, ch_wherearemyfiles)
 
         if (params.run_mbv) {
-            run_mbv(bam, mbv_vcf_ch.collect())
+            run_mbv(align_hisat2.out.bam, mbv_vcf_ch.collect())
         }
 
         gene_expression(align_hisat2.out.bam_sorted, gtf, ch_biotypes_header)
 
         if (params.run_exon_quant) {
-            exon_expression(gtf, bam)
+            exon_expression(gtf, align_hisat2.out.bam)
         }
 
         if (params.run_txrevise) {
