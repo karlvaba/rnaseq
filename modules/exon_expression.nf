@@ -32,9 +32,9 @@ process count_exons {
 
     script:
     def featureCounts_direction = 0
-    if (forward_stranded && !unstranded) {
+    if (params.forward_stranded && !params.unstranded) {
         featureCounts_direction = 1
-    } else if (reverse_stranded && !unstranded){
+    } else if (params.reverse_stranded && !params.unstranded){
         featureCounts_direction = 2
     }
     """
