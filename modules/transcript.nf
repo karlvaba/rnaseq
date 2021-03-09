@@ -7,7 +7,7 @@ process gff_to_fasta {
     input:
     file txrevise_gff
     file genome_fasta
-
+    
     output:
     path "${txrevise_gff.baseName}.fa", emit: txrevise_fasta_ch
     
