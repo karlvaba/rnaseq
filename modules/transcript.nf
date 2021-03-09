@@ -7,7 +7,7 @@ process gff_to_fasta {
     input:
     file txrevise_gff
     file genome_fasta
-    
+
     output:
     path "${txrevise_gff.baseName}.fa", emit: txrevise_fasta_ch
     
@@ -42,7 +42,7 @@ process salmon_quant {
         saveAs: {filename -> if (params.saveIndividualQuants && filename.indexOf(".quant.sf") > 0) filename else null }
 
     input:
-    tuple samplename, file(reads)
+    tuple val(samplename), file(reads)
     each index
 
     output:
@@ -84,7 +84,7 @@ process salmon_merge {
         else null }
 
     input:
-    tuple index, file(input_files)
+    tuple val(index), file(input_files)
 
     output:
     path '*merged.txt'
