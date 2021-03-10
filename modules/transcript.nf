@@ -1,3 +1,31 @@
+/*
+    CHANNEL SETUP
+*/
+
+if(params.run_salmon || params.run_txrevise) { Channel.empty().set { salmon_fasta_ch } }
+
+if(params.run_salmon){
+    Channel
+        .fromPath(params.tx_fasta)
+        .ifEmpty { exit 1, "Transcript fasta file is unreachable: ${params.tx_fasta}" }
+        .set { tx_fasta_ch }
+
+    salmon_fasta_ch.mix(tx_fasta_ch).set { salmon_fasta_ch }
+}
+
+if(params.run_txrevise){
+    Channel
+        .fromPath( params.txrevise_gffs )
+        .ifEmpty { exit 1, "TxRevise gff files not found : ${params.txrevise_gffs}" }
+        .set { txrevise_gff_ch }
+
+    Channel
+        .fromPath(params.fasta)
+        .ifEmpty { exit 1, "Fasta (reference genome for txrevise) file not found: ${params.fasta}" }
+        .set { genome_fasta_ch }
+}
+
+
 //Required for txrevise. Maybe should be in some other file
 process gff_to_fasta {
     tag "${txrevise_gff.baseName}"
@@ -103,9 +131,14 @@ process salmon_merge {
 
 workflow transcript_expression {
     take:
-        salmon_fasta_ch
         trimmed_reads
     main:
+
+        if (params.run_txrevise) {
+            gff_to_fasta(txrevise_gff_ch, genome_fasta_ch.collect())
+            salmon_fasta_ch.mix(gff_to_fasta.out.txrevise_fasta_ch).set { salmon_fasta_ch }
+        }
+        
         makeSalmonIndex(salmon_fasta_ch)
         salmon_quant(trimmed_reads, makeSalmonIndex.out.salmon_index)
         salmon_merge(salmon_quant.out.salmon_merge_tx_ch.groupTuple())

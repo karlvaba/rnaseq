@@ -1,3 +1,26 @@
+/*
+    CHANNEL SETUP
+*/
+
+if ( params.hisat2_index && params.aligner == 'hisat2' ){
+    hs2_indices = Channel
+        .fromPath("${params.hisat2_index}*")
+        .ifEmpty { exit 1, "HISAT2 index not found: ${params.hisat2_index}" }
+}
+
+if( params.gtf ){
+    Channel
+        .fromPath(params.gtf)
+        .ifEmpty { exit 1, "GTF annotation file not found: ${params.gtf}" }
+        .set { gtf }
+} else {
+    exit 1, "No GTF annotation specified!"
+}
+
+/*
+    HISAT2 PROCESSES
+*/
+
 process makeHisatSplicesites {
     container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
@@ -15,7 +38,6 @@ process makeHisatSplicesites {
     hisat2_extract_splice_sites.py $gtf > ${gtf.baseName}.hisat2_splice_sites.txt
     """
 }
-
 
 process hisat2Align {
     container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
@@ -134,19 +156,29 @@ process sort_by_name_BAM {
     """
 }
 
+include { run_mbv } from './mbv'
+include { gene_expression } from './gene_expression'
+include { exon_expression } from './exon_expression'
+
 
 workflow align_hisat2 {
     take:
-        gtf
         trimmed_reads
-        hs2_indices
         ch_wherearemyfiles
     main:
         makeHisatSplicesites(gtf)
         hisat2Align(trimmed_reads, hs2_indices.collect(), makeHisatSplicesites.out.splicesites, ch_wherearemyfiles.collect())
         hisat2_sortOutput(hisat2Align.out.hisat2_bam, ch_wherearemyfiles.collect())
         sort_by_name_BAM(hisat2_sortOutput.out.bam)
-    emit:
-        bam_sorted = sort_by_name_BAM.out.bam_sorted
-        bam = hisat2_sortOutput.out.bam
+
+        //mbv, gene expression, and exon expression subworkflows if needed
+        if (params.run_mbv) {
+            run_mbv(hisat2_sortOutput.out.bam)
+        }
+
+        gene_expression(sort_by_name_BAM.out.bam_sorted, gtf)
+
+        if (params.run_exon_quant) {
+            exon_expression(gtf, hisat2_sortOutput.out.bam)
+        }
 }

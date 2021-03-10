@@ -1,3 +1,13 @@
+/*
+    CHANNEL SETUP
+*/
+ch_biotypes_header = Channel.fromPath("$baseDir/assets/biotypes_header.txt")
+
+
+/*
+    GENE EXPRESSION PROCESSES
+*/
+
 process featureCounts {
     container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
     
@@ -64,7 +74,6 @@ workflow gene_expression {
     take:
         bam_sorted 
         gtf 
-        ch_biotypes_header
     main:
         featureCounts(bam_sorted, gtf, ch_biotypes_header)
         merge_featureCounts(featureCounts.out.geneCounts.toSortedList())
