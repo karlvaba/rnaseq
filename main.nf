@@ -129,7 +129,7 @@ ch_heatmap_header = Channel.fromPath("$baseDir/assets/heatmap_header.txt")
 ch_biotypes_header = Channel.fromPath("$baseDir/assets/biotypes_header.txt")
 ch_multiqc_config = Channel.fromPath(params.multiqc_config)
 ch_output_docs = Channel.fromPath("$baseDir/docs/output.md")
-ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
+
 
 // Define regular variables so that they can be overwritten
 clip_r1 = params.clip_r1
@@ -245,44 +245,7 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
 }
 
 
-/*
- * Create a channel for input read files
- */
-if(params.readPathsFile){
-    if(params.singleEnd){
-        Channel.fromPath(params.readPathsFile)
-        .ifEmpty { error "Cannot find any readPathsFile file in: ${params.readPathsFile}" }
-        .splitCsv(header: false, sep: '\t', strip: true)
-        .map{row -> [ row[0], [ file(row[1]) ] ]}
-        .set { raw_reads }
-    } else {
-        Channel.fromPath(params.readPathsFile)
-        .ifEmpty { error "Cannot find any readPathsFile file in: ${params.readPathsFile}" }
-        .splitCsv(header: false, sep: '\t', strip: true)
-        .map{row -> [ row[0], [ file(row[1]) , file(row[2]) ] ]}
-        .set { raw_reads }
-    }
-} 
-else if(readPaths){
-    if(params.singleEnd){
-        Channel
-            .from(readPaths)
-            .map { row -> [ row[0], [file(row[1][0])]] }
-            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-            .set { raw_reads }
-    } else {
-        Channel
-            .from(readPaths)
-            .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-            .set { raw_reads }
-    }
-} else {
-    Channel
-        .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
-        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nNB: Path requires at least one * wildcard!\nIf this is single-end data, please specify --singleEnd on the command line." }
-        .set { raw_reads }
-}
+
 
 
 log.info """=======================================================

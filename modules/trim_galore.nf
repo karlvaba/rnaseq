@@ -1,3 +1,53 @@
+/*
+    CHANNELS SETUP
+*/
+
+
+//Create a channel for input read files
+if(params.readPathsFile){
+    if(params.singleEnd){
+        Channel.fromPath(params.readPathsFile)
+        .ifEmpty { error "Cannot find any readPathsFile file in: ${params.readPathsFile}" }
+        .splitCsv(header: false, sep: '\t', strip: true)
+        .map{row -> [ row[0], [ file(row[1]) ] ]}
+        .set { raw_reads }
+    } else {
+        Channel.fromPath(params.readPathsFile)
+        .ifEmpty { error "Cannot find any readPathsFile file in: ${params.readPathsFile}" }
+        .splitCsv(header: false, sep: '\t', strip: true)
+        .map{row -> [ row[0], [ file(row[1]) , file(row[2]) ] ]}
+        .set { raw_reads }
+    }
+} 
+else if(readPaths){
+    if(params.singleEnd){
+        Channel
+            .from(readPaths)
+            .map { row -> [ row[0], [file(row[1][0])]] }
+            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
+            .set { raw_reads }
+    } else {
+        Channel
+            .from(readPaths)
+            .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
+            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
+            .set { raw_reads }
+    }
+} else {
+    Channel
+        .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
+        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nNB: Path requires at least one * wildcard!\nIf this is single-end data, please specify --singleEnd on the command line." }
+        .set { raw_reads }
+}
+
+//Channel for file locations
+ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
+
+
+
+/*
+    TRIMGALORE PROCESSES
+*/
 process trim_galore_pr {
     container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
@@ -39,9 +89,6 @@ process trim_galore_pr {
 }
 
 workflow trim_galore {
-    take: 
-        raw_reads
-        ch_wherearemyfiles
     main:
         trim_galore_pr(raw_reads, ch_wherearemyfiles)
     emit:
