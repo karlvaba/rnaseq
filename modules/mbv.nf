@@ -1,8 +1,10 @@
 
-Channel
+if (params.run_mbv) {
+    Channel
     .fromPath(params.mbv_vcf)
     .ifEmpty { exit 1, "VCF file is not found to perform MBV: ${params.mbv_vcf}" }
     .set { mbv_vcf_ch }
+}
 
 
 process run_mbv {
