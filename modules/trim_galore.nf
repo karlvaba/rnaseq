@@ -40,10 +40,6 @@ else if(readPaths){
         .set { raw_reads }
 }
 
-//Channel for file locations
-ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
-
-
 
 /*
     TRIMGALORE PROCESSES
@@ -89,6 +85,8 @@ process trim_galore_pr {
 }
 
 workflow trim_galore {
+    take:
+        ch_wherearemyfiles
     main:
         trim_galore_pr(raw_reads, ch_wherearemyfiles)
     emit:

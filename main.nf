@@ -129,7 +129,7 @@ ch_heatmap_header = Channel.fromPath("$baseDir/assets/heatmap_header.txt")
 ch_biotypes_header = Channel.fromPath("$baseDir/assets/biotypes_header.txt")
 ch_multiqc_config = Channel.fromPath(params.multiqc_config)
 ch_output_docs = Channel.fromPath("$baseDir/docs/output.md")
-
+ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
 
 // Define regular variables so that they can be overwritten
 clip_r1 = params.clip_r1
@@ -335,7 +335,7 @@ include { transcript_expression } from './modules/transcript'
 include { gff_to_fasta } from './modules/transcript'
 
 workflow {
-    trim_galore(raw_reads, ch_wherearemyfiles)
+    trim_galore(ch_wherearemyfiles)
 
     if(!params.skip_alignment) {
         star_log = Channel.from(false)
