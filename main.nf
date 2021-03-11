@@ -40,7 +40,6 @@ params.gff = params.genome ? params.genomes[ params.genome ].gff ?: false : fals
 params.bed12 = params.genome ? params.genomes[ params.genome ].bed12 ?: false : false
 params.hisat2_index = params.genome ? params.genomes[ params.genome ].hisat2 ?: false : false
 
-
 ch_mdsplot_header = Channel.fromPath("$baseDir/assets/mdsplot_header.txt")
 ch_heatmap_header = Channel.fromPath("$baseDir/assets/heatmap_header.txt")
 ch_multiqc_config = Channel.fromPath(params.multiqc_config)

@@ -22,7 +22,6 @@ if( params.gtf ){
 */
 
 process makeHisatSplicesites {
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
     tag "$gtf"
     publishDir path: { params.saveReference ? "${params.outdir}/reference_genome" : params.outdir },
@@ -40,7 +39,6 @@ process makeHisatSplicesites {
 }
 
 process hisat2Align {
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
     tag "$samplename"
     publishDir "${params.outdir}/HISAT2", mode: 'copy',
@@ -103,8 +101,6 @@ process hisat2Align {
 }
 
 process hisat2_sortOutput {
-    
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
     tag "${hisat2_bam.baseName}"
     publishDir "${params.outdir}/HISAT2", mode: 'copy',
@@ -136,7 +132,6 @@ process hisat2_sortOutput {
 
 
 process sort_by_name_BAM {
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
     tag "${bam_featurecounts.baseName - '.sorted'}"
 
