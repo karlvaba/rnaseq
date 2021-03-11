@@ -82,3 +82,82 @@ def helpMessage() {
       --awsregion                   The AWS Region for your AWS Batch job to run on
     """.stripIndent()
 }
+
+def summaryMessage() {
+  log.info """=======================================================
+                                            ,--./,-.
+            ___     __   __   __   ___     /,-._.--~\'
+      |\\ | |__  __ /  ` /  \\ |__) |__         }  {
+      | \\| |       \\__, \\__/ |  \\ |___     \\`-._,-`-,
+                                            `._,._,\'
+
+  nf-core/rnaseq : RNA-Seq Best Practice v${workflow.manifest.version}
+  ======================================================="""
+  def summary = [:]
+  summary['Run Name']     = custom_runName ?: workflow.runName
+  summary['Reads']        = params.reads
+  summary['ReadPathsFile']        = params.readPathsFile
+  summary['Data Type']    = params.singleEnd ? 'Single-End' : 'Paired-End'
+  summary['Genome']       = params.genome
+  if( params.pico ) summary['Library Prep'] = "SMARTer Stranded Total RNA-Seq Kit - Pico Input"
+  summary['Strandedness'] = ( params.unstranded ? 'None' : params.forward_stranded ? 'Forward' : params.reverse_stranded ? 'Reverse' : 'None' )
+  summary['Trim R1'] = params.clip_r1
+  summary['Trim R2'] = params.clip_r2
+  summary["Trim 3' R1"] = params.three_prime_clip_r1
+  summary["Trim 3' R2"] = params.three_prime_clip_r2
+  if(params.aligner == 'star'){
+      summary['Aligner'] = "STAR"
+      if(params.star_index)          summary['STAR Index']   = params.star_index
+      else if(params.fasta)          summary['Fasta Ref']    = params.fasta
+  } else if(params.aligner == 'hisat2') {
+      summary['Aligner'] = "HISAT2"
+      if(params.hisat2_index)        summary['HISAT2 Index'] = params.hisat2_index
+      else if(params.fasta)          summary['Fasta Ref']    = params.fasta
+      if(params.splicesites)         summary['Splice Sites'] = params.splicesites
+  }
+  if(params.gtf)                 summary['GTF Annotation']  = params.gtf
+  if(params.gff)                 summary['GFF3 Annotation']  = params.gff
+  if(params.bed12)               summary['BED Annotation']  = params.bed12
+  summary['Save Reference'] = params.saveReference ? 'Yes' : 'No'
+  summary['Save Trimmed']   = params.saveTrimmed ? 'Yes' : 'No'
+  summary['Save Intermeds'] = params.saveAlignedIntermediates ? 'Yes' : 'No'
+  summary['Save Indv Quants']  = params.saveIndividualQuants ? 'Yes' : 'No'
+  summary['Max Memory']     = params.max_memory
+  summary['Max CPUs']       = params.max_cpus
+  summary['Max Time']       = params.max_time
+  summary['Output dir']     = params.outdir
+  summary['Skip alignment'] = params.skip_alignment
+  summary['Run salmon']     = params.run_salmon
+  summary['Run exon quant'] = params.run_exon_quant
+  summary['Run leafcutter'] = params.run_leafcutter
+  summary['Run txrevise']   = params.run_txrevise
+  summary['Working dir']    = workflow.workDir
+  summary['Container']      = workflow.container
+  if(workflow.revision) summary['Pipeline Release'] = workflow.revision
+  summary['Current home']   = "$HOME"
+  summary['Current user']   = "$USER"
+  summary['Current path']   = "$PWD"
+  summary['Script dir']     = workflow.projectDir
+  summary['Config Profile'] = workflow.profile
+  if(params.project) summary['UPPMAX Project'] = params.project
+  if(params.email) {
+      summary['E-mail Address'] = params.email
+      summary['MultiQC maxsize'] = params.maxMultiqcEmailFileSize
+  }
+  log.info summary.collect { k,v -> "${k.padRight(15)}: $v" }.join("\n")
+  log.info "========================================="
+
+
+  // Show a big error message if we're running on the base config and an uppmax cluster
+  if( workflow.profile == 'standard'){
+      if ( "hostname".execute().text.contains('.uppmax.uu.se') ) {
+          log.error "====================================================\n" +
+                    "  WARNING! You are running with the default 'standard'\n" +
+                    "  pipeline config profile, which runs on the head node\n" +
+                    "  and assumes all software is on the PATH.\n" +
+                    "  ALL JOBS ARE RUNNING LOCALLY and stuff will probably break.\n" +
+                    "  Please use `-profile uppmax` to run on UPPMAX clusters.\n" +
+                    "============================================================"
+      }
+  }
+}
