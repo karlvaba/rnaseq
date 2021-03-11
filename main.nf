@@ -77,7 +77,8 @@ workflow {
         transcript_expression(trim_galore.out.trimmed_reads)
     }
 
-    output_documentation()
+    output_docs_ch = Channel.fromPath("$baseDir/docs/output.md")
+    output_documentation(outpud_docs_ch)
 }
 
 /*
