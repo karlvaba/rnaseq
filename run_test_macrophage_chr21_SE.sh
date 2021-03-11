@@ -1,12 +1,12 @@
 ../nextflow run main.nf\
  -profile tartu_hpc\
- --readPathsFile ./data/readPathsFile_macrophages_SE.tsv\
+ --readPathsFile ./data/readPathsFile_macrophages_PE.tsv\
  --singleEnd\
  --reverse_stranded\
  --hisat2_index /gpfs/hpc/projects/genomic_references/annotations/eQTLCatalogue/v0.1/hisat2_index_v96/Homo_sapiens.GRCh38.dna.primary_assembly\
  --aligner 'hisat2'\
  --skip_qc\
- --skip_multiqc\
+ --skip_skip_multiqc\
  --run_tx_exp_quant\
  --run_txrevise\
  --run_splicing_exp_quant\
