@@ -84,6 +84,12 @@ def helpMessage() {
 }
 
 def summaryMessage() {
+  custom_runName = params.name
+
+  if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+    custom_runName = workflow.runName
+  }
+
   log.info """=======================================================
                                             ,--./,-.
             ___     __   __   __   ___     /,-._.--~\'

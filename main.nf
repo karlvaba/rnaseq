@@ -16,7 +16,7 @@ nextflow.enable.dsl=2
 include { trim_galore } from './modules/trim_galore'
 include { align_hisat2 } from './modules/hisat2'
 include { transcript_expression } from './modules/transcript'
-include { helpMessage, summaryMessage } from './modules/utils'
+include { helpMessage; summaryMessage } from './modules/utils'
 
 
 // Show help emssage
@@ -72,11 +72,6 @@ if(workflow.profile == 'awsbatch'){
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
-custom_runName = params.name
-if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
-  custom_runName = workflow.runName
-}
-
 
 summaryMessage()
 
