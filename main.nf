@@ -58,7 +58,7 @@ if(workflow.profile == 'awsbatch'){
 include { trim_galore } from './modules/trim_galore'
 include { align_hisat2 } from './modules/hisat2'
 include { transcript_expression } from './modules/transcript'
-include { output_docs, get_software_versions, summaryMessage} from './modules/utils'
+include { output_docs; get_software_versions; summaryMessage} from './modules/utils'
 
 workflow {
     summaryMessage()
