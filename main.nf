@@ -13,17 +13,18 @@
 */
 nextflow.enable.dsl=2
 
-include { trim_galore } from './modules/trim_galore'
-include { align_hisat2 } from './modules/hisat2'
-include { transcript_expression } from './modules/transcript'
 include { helpMessage; summaryMessage } from './modules/utils'
-
 
 // Show help emssage
 if (params.help){
     helpMessage()
     exit 0
 }
+
+include { trim_galore } from './modules/trim_galore'
+include { align_hisat2 } from './modules/hisat2'
+include { transcript_expression } from './modules/transcript'
+
 
 // Check if genome exists in the config file
 /*if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
