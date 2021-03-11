@@ -21,8 +21,6 @@ if (params.help){
     exit 0
 }
 
-
-
 // Check if genome exists in the config file
 if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
     exit 1, "The provided genome '${params.genome}' is not available in the iGenomes file. Currently the available genomes are ${params.genomes.keySet().join(", ")}"
@@ -35,7 +33,6 @@ params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : 
 params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
 params.gff = params.genome ? params.genomes[ params.genome ].gff ?: false : false
 params.hisat2_index = params.genome ? params.genomes[ params.genome ].hisat2 ?: false : false
-
 
 
 // Profile validations
@@ -84,9 +81,3 @@ workflow {
     output_documentation(output_docs_ch)
 }
 
-/*
- * Completion e-mail notification
- */
-workflow.onComplete {
-    emailMessage()
-}
