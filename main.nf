@@ -78,7 +78,7 @@ workflow {
     }
 
     output_docs_ch = Channel.fromPath("$baseDir/docs/output.md")
-    output_documentation(outpud_docs_ch)
+    output_documentation(output_docs_ch)
 }
 
 /*
