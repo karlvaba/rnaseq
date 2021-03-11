@@ -60,11 +60,15 @@ include { align_hisat2 } from './modules/hisat2'
 include { transcript_expression } from './modules/transcript'
 include { output_documentation; get_software_versions; summaryMessage} from './modules/utils'
 
+
+ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
+output_docs_ch = Channel.fromPath("$baseDir/docs/output.md")
+
 workflow {
     summaryMessage()
     get_software_versions()
 
-    ch_wherearemyfiles = Channel.fromPath("$baseDir/assets/where_are_my_files.txt")
+    
     trim_galore(ch_wherearemyfiles)
 
     if(!params.skip_alignment) {
@@ -77,7 +81,6 @@ workflow {
         transcript_expression(trim_galore.out.trimmed_reads)
     }
 
-    output_docs_ch = Channel.fromPath("$baseDir/docs/output.md")
     output_documentation(output_docs_ch)
 }
 
