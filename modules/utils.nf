@@ -12,7 +12,7 @@ process output_documentation {
 
     script:
     """
-    markdown_to_html.r $output_docs results_description.html
+    markdown_to_html.r ${file(output_docs)} results_description.html
     """
 }
 
