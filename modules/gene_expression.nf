@@ -9,7 +9,6 @@ ch_biotypes_header = Channel.fromPath("$baseDir/assets/biotypes_header.txt")
 */
 
 process featureCounts {
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
     
     tag "${bam_featurecounts_sorted.baseName - '.sortedByName'}"
     publishDir "${params.outdir}/featureCounts", mode: 'copy',
@@ -50,7 +49,6 @@ process featureCounts {
 }
 
 process merge_featureCounts {
-    container = 'quay.io/eqtlcatalogue/rnaseq:v20.11.1'
 
     tag "merge ${input_files.size()} files"
     publishDir "${params.outdir}/featureCounts", mode: 'copy'

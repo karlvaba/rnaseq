@@ -1,3 +1,51 @@
+/*
+  Helper processes
+*/
+
+output_docs = Channel.fromPath("$baseDir/docs/output.md")
+
+process output_documentation {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy'
+
+    output:
+    file "results_description.html"
+
+    script:
+    """
+    markdown_to_html.r $output_docs results_description.html
+    """
+}
+
+
+process get_software_versions {
+    output:
+    path 'software_versions_mqc.yaml'
+
+    script:
+    """
+    echo $workflow.manifest.version &> v_ngi_rnaseq.txt
+    echo $workflow.nextflow.version &> v_nextflow.txt
+    fastqc --version &> v_fastqc.txt
+    cutadapt --version &> v_cutadapt.txt
+    trim_galore --version &> v_trim_galore.txt
+    STAR --version &> v_star.txt
+    hisat2 --version &> v_hisat2.txt
+    stringtie --version &> v_stringtie.txt
+    preseq &> v_preseq.txt
+    read_duplication.py --version &> v_rseqc.txt
+    echo \$(bamCoverage --version 2>&1) > v_deeptools.txt
+    featureCounts -v &> v_featurecounts.txt
+    picard MarkDuplicates --version &> v_markduplicates.txt  || true
+    samtools --version &> v_samtools.txt
+    multiqc --version &> v_multiqc.txt
+    scrape_software_versions.py &> software_versions_mqc.yaml
+    """
+}
+
+
+/*
+  Helper functions
+*/
 def helpMessage() {
     log.info """
     =======================================================
@@ -83,12 +131,14 @@ def helpMessage() {
     """.stripIndent()
 }
 
-def summaryMessage() {
-  custom_runName = params.name
 
-  if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
-    custom_runName = workflow.runName
-  }
+
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
+
+def summaryMessage() {
 
   log.info """=======================================================
                                             ,--./,-.
@@ -166,4 +216,119 @@ def summaryMessage() {
                     "============================================================"
       }
   }
+}
+
+
+def emailMessage() {
+    //This came from start aligment before. Right now dont have star aligner included in the workflow
+    skipped_poor_alignment = []
+
+    // Set up the e-mail variables
+    def subject = "[nfcore/rnaseq] Successful: $workflow.runName"
+    if(skipped_poor_alignment.size() > 0){
+        subject = "[nfcore/rnaseq] Partially Successful (${skipped_poor_alignment.size()} skipped): $workflow.runName"
+    }
+    if(!workflow.success){
+      subject = "[nfcore/rnaseq] FAILED: $workflow.runName"
+    }
+    def email_fields = [:]
+    email_fields['version'] = workflow.manifest.version
+    email_fields['runName'] = custom_runName ?: workflow.runName
+    email_fields['success'] = workflow.success
+    email_fields['dateComplete'] = workflow.complete
+    email_fields['duration'] = workflow.duration
+    email_fields['exitStatus'] = workflow.exitStatus
+    email_fields['errorMessage'] = (workflow.errorMessage ?: 'None')
+    email_fields['errorReport'] = (workflow.errorReport ?: 'None')
+    email_fields['commandLine'] = workflow.commandLine
+    email_fields['projectDir'] = workflow.projectDir
+    email_fields['summary'] = summary
+    email_fields['summary']['Date Started'] = workflow.start
+    email_fields['summary']['Date Completed'] = workflow.complete
+    email_fields['summary']['Pipeline script file path'] = workflow.scriptFile
+    email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
+    if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
+    if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
+    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
+    if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
+    email_fields['skipped_poor_alignment'] = skipped_poor_alignment
+
+    // On success try attach the multiqc report
+    def mqc_report = null
+    try {
+        if (workflow.success && !params.skip_multiqc) {
+            mqc_report = multiqc_report.getVal()
+            if (mqc_report.getClass() == ArrayList){
+                log.warn "[nfcore/rnaseq] Found multiple reports from process 'multiqc', will use only one"
+                mqc_report = mqc_report[0]
+                }
+        }
+    } catch (all) {
+        log.warn "[nfcore/rnaseq] Could not attach MultiQC report to summary email"
+    }
+
+    // Render the TXT template
+    def engine = new groovy.text.GStringTemplateEngine()
+    def tf = new File("$baseDir/assets/email_template.txt")
+    def txt_template = engine.createTemplate(tf).make(email_fields)
+    def email_txt = txt_template.toString()
+
+    // Render the HTML template
+    def hf = new File("$baseDir/assets/email_template.html")
+    def html_template = engine.createTemplate(hf).make(email_fields)
+    def email_html = html_template.toString()
+
+    // Render the sendmail template
+    def smail_fields = [ email: params.email, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "$baseDir", mqcFile: mqc_report, mqcMaxSize: params.maxMultiqcEmailFileSize.toBytes() ]
+    def sf = new File("$baseDir/assets/sendmail_template.txt")
+    def sendmail_template = engine.createTemplate(sf).make(smail_fields)
+    def sendmail_html = sendmail_template.toString()
+
+    // Send the HTML e-mail
+    if (params.email) {
+        try {
+          if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
+          // Try to send HTML e-mail using sendmail
+          [ 'sendmail', '-t' ].execute() << sendmail_html
+          log.info "[nfcore/rnaseq] Sent summary e-mail to $params.email (sendmail)"
+        } catch (all) {
+          // Catch failures and try with plaintext
+          [ 'mail', '-s', subject, params.email ].execute() << email_txt
+          log.info "[nfcore/rnaseq] Sent summary e-mail to $params.email (mail)"
+        }
+    }
+
+    // Switch the embedded MIME images with base64 encoded src
+    ngirnaseqlogo = new File("$baseDir/assets/nfcore-rnaseq_logo.png").bytes.encodeBase64().toString()
+    email_html = email_html.replaceAll(~/cid:ngilogo/, "data:image/png;base64,$ngilogo")
+
+    // Write summary e-mail HTML to a file
+    def output_d = new File( "${params.outdir}/pipeline_info/" )
+    if( !output_d.exists() ) {
+      output_d.mkdirs()
+    }
+    def output_hf = new File( output_d, "pipeline_report.html" )
+    output_hf.withWriter { w -> w << email_html }
+    def output_tf = new File( output_d, "pipeline_report.txt" )
+    output_tf.withWriter { w -> w << email_txt }
+
+    if(skipped_poor_alignment.size() > 0){
+        log.info "[nfcore/rnaseq] WARNING - ${skipped_poor_alignment.size()} samples skipped due to poor alignment scores!"
+    }
+
+    log.info "[nfcore/rnaseq] Pipeline Complete"
+
+    if(!workflow.success){
+        if( workflow.profile == 'standard'){
+            if ( "hostname".execute().text.contains('.uppmax.uu.se') ) {
+                log.error "====================================================\n" +
+                        "  WARNING! You are running with the default 'standard'\n" +
+                        "  pipeline config profile, which runs on the head node\n" +
+                        "  and assumes all software is on the PATH.\n" +
+                        "  This is probably why everything broke.\n" +
+                        "  Please use `-profile uppmax` to run on UPPMAX clusters.\n" +
+                        "============================================================"
+            }
+        }
+    }
 }

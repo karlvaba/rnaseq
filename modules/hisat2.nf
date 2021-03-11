@@ -1,6 +1,10 @@
 /*
-    CHANNEL SETUP
+    SETUP
 */
+if (params.aligner != 'star' && params.aligner != 'hisat2'){
+    exit 1, "Invalid aligner option: ${params.aligner}. Valid options: 'star', 'hisat2'"
+}
+
 
 if ( params.hisat2_index && params.aligner == 'hisat2' ){
     hs2_indices = Channel
